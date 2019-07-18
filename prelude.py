@@ -13,10 +13,34 @@ class graph (object):
     def __init__(self,nodes_file,edges_file):
         self.graph = self.read_graph(edges_file)
         self.nodes = list(self.graph.keys())
-        self.exits = [x for x in self.nodes if x - math.floor(x) < 0.099]        
+        self.nodes_own = []
+        self.exits = []
+        self.secure_rooms = []        
+        self.read_nodes(nodes_file)
         self.paths_to_exits = {x:[] for x in self.nodes}
-        self.calculate_paths()
-        self.make_files(nodes_file)
+        self.paths_to_secure_rooms = {x:[] for x in self.nodes}
+        
+        self.calculate_paths(self.exits, self.paths_to_exits)
+        self.calculate_paths(self.secure_rooms, self.paths_to_secure_rooms)
+        
+        print(self.nodes_own[0])
+        print(self.paths_to_secure_rooms[self.nodes_own[0][0]])
+        print(self.paths_to_exits[ self.nodes_own[0][0] ])
+    
+
+    def read_nodes(self,nodes_file):
+        with open(nodes_file) as n:
+            nodes = n.readlines()
+#            nodes0 = nodes[0]
+            nodes = nodes[1:]
+        nodes = [ [float(y.strip()) for y in x.split(',')]  for x in nodes if len(x)>1]
+
+        for node in nodes:
+            if node[0] - math.floor(node[0]) < 0.099:
+                self.exits.append(node[0])
+            if node[-1] == 1:
+                self.secure_rooms.append(node[0])
+            self.nodes_own.append(node)    
         
     def read_graph(self,file):
     
@@ -57,26 +81,19 @@ class graph (object):
         return res
 
     
-    def calculate_paths(self):
-        nodes = self.nodes
-        
-        for e in self.exits:
+    def calculate_paths(self,roots,paths):
+        nodes = self.nodes        
+        for e in roots:
             aux = self.bfs( nodes, [e], {e:[e]} ) 
-                  
             for node in self.nodes:
-                self.paths_to_exits[node].append(aux[node] )
+                paths[node].append(aux[node] )
         
     def make_files(self, nodes_file):
-        with open(nodes_file) as n:
-            nodes = n.readlines()
-            nodes0 = nodes[0]
-            nodes = nodes[1:]
-        nodes = [ [float(y.strip()) for y in x.split(',')]  for x in nodes if len(x)>1]
-        print(nodes)
-        print(nodes0)
+        return
+        
 
 
 
-graph = graph("nodos-19-07-11.csv","aristas-19-07-11.csv")
+graph = graph("nodes.csv","edges.csv")
 
 
