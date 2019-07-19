@@ -6,6 +6,7 @@ Created on Tue Jul 16 20:34:09 2019
 @author: enrloport
 """
 import math
+from shutil import copyfile
 
 
 class graph (object):
@@ -13,6 +14,7 @@ class graph (object):
     def __init__(self,nodes_file,edges_file):
         self.header = ''
         self.graph = self.read_graph(edges_file)
+        self.edges_file = edges_file
         self.nodes = list(self.graph.keys())
         self.nodes_own = {}
         self.exits = []
@@ -24,10 +26,7 @@ class graph (object):
         self.calculate_paths(self.exits, self.paths_to_exits)
         self.calculate_paths(self.secure_rooms, self.paths_to_secure_rooms)
         
-        self.make_files('nodes_NL.csv')
-#        print(self.nodes_own[22.1])
-#        print(self.paths_to_secure_rooms[22.1])
-#        print(self.paths_to_exits[22.1])
+        self.make_files('nodes_NL.csv','edges_NL.csv')
     
 
     def read_nodes(self,nodes_file):
@@ -92,7 +91,6 @@ class graph (object):
     
     def node_string(self,node):
         res = ''
-#        res += self.list_to_string(self.nodes_own[node])
         for property in self.nodes_own[node]:
             res += str(property) + ', '
         
@@ -122,20 +120,18 @@ class graph (object):
         res += ']'
         return res
             
-    def make_files(self, filepath):
+    def make_files(self, nodes, edges):
         
-#        return
+        copyfile(self.edges_file, 'edges_NL.csv' )        
         first_line = self.header.strip() + ', exits_routes, rooms_routes'
         print(first_line)
-        with open(filepath, "w") as fp:
+        with open(nodes, "w") as fp:
             print(first_line, file = fp)
             for node in self.nodes:
-                print(self.node_string(node), file = fp)
-#        return
-        
+                print(self.node_string(node), file = fp)        
 
-
-
-graph = graph("nodes.csv","edges.csv")
+nodes_file = "nodes.csv"
+edges_file = "edges.csv"
+graph = graph( nodes_file, edges_file)
 
 

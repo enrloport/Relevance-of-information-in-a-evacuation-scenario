@@ -27,6 +27,7 @@ globals [
   reshaped-consequent-R2
 
   transitable-edges
+  speed
 
 ]
 
@@ -109,6 +110,7 @@ to setup
   set not-app-killed 0
   set not-app-rescued 0
   set exits []
+  set speed 0.6
 
   create-fuzzy-sets
 
@@ -240,7 +242,7 @@ to go
     ifelse any? peacefuls with [location = loc and not hidden][attack][move-attacker]
   ]
   ask leaders [
-    set label hidden
+    ;set label hidden
 
     ifelse [id - floor id] of location < 0.099 [
       ifelse app [set app-rescued app-rescued + 1][set not-app-rescued not-app-rescued + 1]
@@ -271,6 +273,7 @@ to go
         set leader ( max-one-of leaders with [location = [location] of myself ] [leadership] )
         set percived-risk [percived-risk] of leader
         set state ["with-leader"]
+        follow-leader
       ][
         peaceful-believe
 
@@ -313,7 +316,7 @@ to peaceful-believe
   set bomb-heard [bomb-sound?] of location
   set scream-heard [scream?] of location
   set corpse-sighted [corpses?] of location
-  set running-people [running-people?] of location
+  set running-people running-people + [running-people?] of location
 
   let percived-signals (attacker-sighted + fire-sighted + bomb-sighted + attacker-heard
     + fire-heard + bomb-heard + scream-heard + corpse-sighted + running-people)
@@ -325,9 +328,7 @@ to peaceful-believe
   let dis-aux 0
   if percived-signals > 0 [
     ifelse running-people > 0 [
-      ask location[
-        set dis-aux 10
-      ]
+      set dis-aux 10
     ][
       let nearest-dangerous-node min-one-of nodes with [habitable < 1] [distance myself]
       set dis-aux distance nearest-dangerous-node
@@ -346,6 +347,7 @@ end
 
 to peaceful-desire [#fire-sighted #fire-heard #attacker-sighted  #attacker-heard #bomb-sighted #bomb-heard #scream-heard #running-people #percived-risk #fear]
   ifelse any? leaders with [location = [location] of myself] [
+    ;set label leader
     set state "with-leader"
   ][
 
@@ -405,12 +407,12 @@ to follow-leader
     ;set location [location] of leader
     set next-location [next-location] of leader
     face next-location
-    ;fd 0.4
+    ;fd speed
     if location != next-location [
       ask (link ([who] of location) ([who] of next-location) ) [
         if flow-counter >= 0 [
           set flow-counter flow-counter - 1
-          ask myself [fd .4]
+          ask myself [fd speed]
         ]
       ]
     ]
@@ -431,7 +433,12 @@ to run-away
       ]
     ]
   ]
-  ask location [set running-people? running-people? + 0.3]
+  ask location [
+    set running-people? 0.3
+    ask my-links with [transitable > 0 ][
+      ask other-end [set running-people? running-people? + 0.1]
+    ]
+  ]
   ifelse app-info? and app or leadership > 0 [
     follow-route route
   ][
@@ -476,7 +483,8 @@ end
 
 
 to keep-working
-  if any? peacefuls with [location = [location] of myself and state = "running-away" ] [set state "running-away"]
+  ;if any? peacefuls with [location = [location] of myself and state = "running-away" ] [set state "running-away"]
+  if percived-risk > 0.5 [set state "running-away"]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -536,7 +544,7 @@ to advance ; go to next-node
     ask (link ([who] of location) ([who] of next-location) ) [
       if flow-counter >= 0 [
         set flow-counter flow-counter - 1
-        ask myself [fd .4]
+        ask myself [fd speed]
       ]
     ]
   ]
@@ -561,7 +569,7 @@ to search-intuitive-node
     if any? secure-destinations [set destinations secure-destinations]
 
     ifelse any? destinations with[ (id - floor id)< 0.02] [ ; The agent has found an exit
-        set next-location one-of destinations with [ (id - floor id)< 0.02]
+        set next-location one-of destinations with [ (id - floor id)< 0.099]
     ][
       ; Ha encontrado una sala con salida
       ifelse any? destinations with[ member? (floor id) exits and (not any? people-here with [p-type = "violent"]) ] [
@@ -694,11 +702,12 @@ to update-world
     set fire-sound? 0
     set bomb-sound? 0
     set scream? 0
+    set running-people? 0
 
     set residents ( (count people with [location = myself and hidden = false and p-type = "peaceful" ]) )
   ]
 
-  ask people [set label ""]
+  ;ask people [set label ""]
 
   ask transitable-edges[
     let n1 end1
@@ -706,7 +715,7 @@ to update-world
     ifelse any? people with [location = n1 and next-location = n2 or location = n2 and next-location = n1 ] [
       set flow-counter (flow-counter + flow)
     ][
-      set flow-counter 0
+      set flow-counter flow
     ]
   ]
   ask violents [
@@ -729,6 +738,8 @@ to update-world
       ]
     ]
   ]
+
+
 end
 
 to-report app-recomendations
@@ -835,7 +846,7 @@ num-peacefuls
 num-peacefuls
 1
 300
-300.0
+200.0
 1
 1
 NIL
@@ -904,7 +915,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.0
+0.1
 0.05
 1
 NIL
@@ -980,7 +991,7 @@ SWITCH
 48
 app-info?
 app-info?
-0
+1
 1
 -1000
 
@@ -1022,7 +1033,7 @@ INPUTBOX
 196
 75
 nodes-file
-hole.csv
+nodes_NL.csv
 1
 0
 String
@@ -1033,7 +1044,7 @@ INPUTBOX
 196
 138
 edges-file
-edges.csv
+edges_NL.csv
 1
 0
 String
