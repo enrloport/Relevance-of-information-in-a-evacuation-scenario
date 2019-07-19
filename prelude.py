@@ -11,9 +11,10 @@ import math
 class graph (object):
     
     def __init__(self,nodes_file,edges_file):
+        self.header = ''
         self.graph = self.read_graph(edges_file)
         self.nodes = list(self.graph.keys())
-        self.nodes_own = []
+        self.nodes_own = {}
         self.exits = []
         self.secure_rooms = []        
         self.read_nodes(nodes_file)
@@ -23,15 +24,16 @@ class graph (object):
         self.calculate_paths(self.exits, self.paths_to_exits)
         self.calculate_paths(self.secure_rooms, self.paths_to_secure_rooms)
         
-        print(self.nodes_own[0])
-        print(self.paths_to_secure_rooms[self.nodes_own[0][0]])
-        print(self.paths_to_exits[ self.nodes_own[0][0] ])
+        self.make_files('nodes_NL.csv')
+#        print(self.nodes_own[22.1])
+#        print(self.paths_to_secure_rooms[22.1])
+#        print(self.paths_to_exits[22.1])
     
 
     def read_nodes(self,nodes_file):
         with open(nodes_file) as n:
             nodes = n.readlines()
-#            nodes0 = nodes[0]
+            self.header = nodes[0]
             nodes = nodes[1:]
         nodes = [ [float(y.strip()) for y in x.split(',')]  for x in nodes if len(x)>1]
 
@@ -40,7 +42,7 @@ class graph (object):
                 self.exits.append(node[0])
             if node[-1] == 1:
                 self.secure_rooms.append(node[0])
-            self.nodes_own.append(node)    
+            self.nodes_own[node[0]]=node 
         
     def read_graph(self,file):
     
@@ -87,9 +89,49 @@ class graph (object):
             aux = self.bfs( nodes, [e], {e:[e]} ) 
             for node in self.nodes:
                 paths[node].append(aux[node] )
+    
+    def node_string(self,node):
+        res = ''
+#        res += self.list_to_string(self.nodes_own[node])
+        for property in self.nodes_own[node]:
+            res += str(property) + ', '
         
-    def make_files(self, nodes_file):
-        return
+        res += self.exits_string(node)
+        res += ', '
+        res += self.rooms_string(node)
+        return res
+    
+    def exits_string(self,node):
+        res = '['
+        for path in self.paths_to_exits[node]:
+            res += ' ' + str(self.list_to_string(path)) + ' '
+        res += ']'
+        return res 
+    
+    def rooms_string(self,node):
+        res = '['
+        for path in self.paths_to_secure_rooms[node]:
+            res += ' ' + str(self.list_to_string(path)) + ' '
+        res += ']'
+        return res 
+    
+    def list_to_string(self,a_list):
+        res = '['
+        for item in a_list:
+            res += ' ' + str(item) + ' '
+        res += ']'
+        return res
+            
+    def make_files(self, filepath):
+        
+#        return
+        first_line = self.header.strip() + ', exits_routes, rooms_routes'
+        print(first_line)
+        with open(filepath, "w") as fp:
+            print(first_line, file = fp)
+            for node in self.nodes:
+                print(self.node_string(node), file = fp)
+#        return
         
 
 

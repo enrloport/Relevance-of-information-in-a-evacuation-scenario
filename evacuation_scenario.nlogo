@@ -51,7 +51,8 @@ nodes-own [
   hidden-people
   lock?
   residents
-  routes
+  exits_routes
+  rooms_routes
 ]
 
 links-own [
@@ -127,7 +128,8 @@ to setup
       set habitable 1
       ;set label id
       set shape "circle"
-      set size size + 1
+      ;set size 0.3
+      ;set size size + 1
       set residents 0
       set hidden-people 0
       set xcor xcor * 1.1
@@ -423,7 +425,7 @@ to run-away
     set hidden false
     ask location [set hidden-people hidden-people - 1]
     if app-info? and app [
-      set route first ( sort-by [[r1 r2] -> route-distance r1 < route-distance r2 ] ([routes] of location) )
+      set route first ( sort-by [[r1 r2] -> route-distance r1 < route-distance r2 ] ([exits_routes] of location) )
       ask location [
         if lock? = 1 [ ask my-links with [lockable? > 0][set locked? 0] ] ; If there is a locked lock, then unlock it
       ]
@@ -773,11 +775,11 @@ to-report secure-route? [#route]
 end
 
 to-report my-secure-routes
-  report filter [ x -> secure-route? x = 0] routes
+  report filter [ x -> secure-route? x = 0] exits_routes
 end
 
 to-report my-least-bad-route
-  report first ( sort-by [ [route1 route2 ] -> secure-route? route1 < secure-route? route2 ] routes )
+  report first ( sort-by [ [route1 route2 ] -> secure-route? route1 < secure-route? route2 ] exits_routes )
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -833,7 +835,7 @@ num-peacefuls
 num-peacefuls
 1
 300
-132.0
+300.0
 1
 1
 NIL
@@ -978,7 +980,7 @@ SWITCH
 48
 app-info?
 app-info?
-1
+0
 1
 -1000
 
@@ -1020,7 +1022,7 @@ INPUTBOX
 196
 75
 nodes-file
-nodes.csv
+hole.csv
 1
 0
 String
