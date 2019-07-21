@@ -92,12 +92,16 @@ class graph (object):
     def node_string(self,node):
         res = ''
         for property in self.nodes_own[node]:
-            res += str(property) + ', '
-        
+            res += str(property) + ','
+        res += self.reacheables_string(node)
+        res += ','
         res += self.exits_string(node)
-        res += ', '
+        res += ','
         res += self.rooms_string(node)
         return res
+    
+    def reacheables_string(self,node):
+        return self.list_to_string(self.graph[node])
     
     def exits_string(self,node):
         res = '['
@@ -123,7 +127,7 @@ class graph (object):
     def make_files(self, nodes, edges):
         
         copyfile(self.edges_file, 'edges_NL.csv' )        
-        first_line = self.header.strip() + ', exits_routes, rooms_routes'
+        first_line = self.header.strip() + ', reacheables, exits_routes, rooms_routes'
         print(first_line)
         with open(nodes, "w") as fp:
             print(first_line, file = fp)
