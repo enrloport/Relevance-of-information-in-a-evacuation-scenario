@@ -54,6 +54,8 @@ nodes-own [
   residents
   exits_routes
   rooms_routes
+  reacheables
+  visibles
 ]
 
 links-own [
@@ -134,8 +136,9 @@ to setup
       ;set size size + 1
       set residents 0
       set hidden-people 0
-      set xcor xcor * 1.1
-      set ycor ycor * 1.1
+      set xcor xcor * 1
+      set ycor ycor * 1
+
     ]
   ]
 
@@ -161,6 +164,13 @@ to setup
     ]
   ]
   set transitable-edges (link-set links with [transitable > 0] )
+
+
+  ask nodes [
+    let r-aux reacheables
+    set reacheables nodes with[ member? id r-aux ]
+    set visibles turtle-set ( [other-end] of my-links with [visibility > 0] )
+  ]
 
   ; Create People
   create-people num-peacefuls [
@@ -242,7 +252,6 @@ to go
     ifelse any? peacefuls with [location = loc and not hidden][attack][move-attacker]
   ]
   ask leaders [
-    ;set label hidden
 
     ifelse [id - floor id] of location < 0.099 [
       ifelse app [set app-rescued app-rescued + 1][set not-app-rescued not-app-rescued + 1]
@@ -265,15 +274,12 @@ to go
       die
     ][
       let loc-aux location
-      ifelse any? leaders with [location = loc-aux] [
-        if hidden [
-          set hidden false
-          ask location [set hidden-people hidden-people - 1]
-        ]
-        set leader ( max-one-of leaders with [location = [location] of myself ] [leadership] )
+
+      ifelse any? leaders with [ location = loc-aux and state = "running-away"] [
+
+        set leader ( max-one-of leaders with [location = loc-aux] [leadership] )
         set percived-risk [percived-risk] of leader
-        set state ["with-leader"]
-        follow-leader
+        set state "with-leader"
       ][
         peaceful-believe
 
@@ -282,10 +288,10 @@ to go
 
       ]
       peaceful-intention
+
       if fear > 0 [set fear fear - 1]
     ]
   ]
-
 
   tick
 end
@@ -305,8 +311,6 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to peaceful-believe
-  ;let loc-aux location
-  ;  let le-aux leadership
 
   set attacker-sighted [attacker?] of location
   set fire-sighted [fire?] of location
@@ -344,35 +348,30 @@ to peaceful-believe
 
 end
 
-
 to peaceful-desire [#fire-sighted #fire-heard #attacker-sighted  #attacker-heard #bomb-sighted #bomb-heard #scream-heard #running-people #percived-risk #fear]
-  ifelse any? leaders with [location = [location] of myself] [
-    ;set label leader
-    set state "with-leader"
+  ifelse app-info? and app [
+    set aux app-recomendations
+    ifelse aux = 0 [
+      ifelse (  ([lock?] of location) = 1 and ( not violents-in-my-room ) ) or ([hidden-places - hidden-people] of location > 0) [
+        set state "hidden"
+      ][
+        set state "running-away" ; there is no place to hide, so, run away
+        set route ( [my-least-bad-route] of location )
+      ]
+    ][
+      set state "running-away"
+    ]
   ][
-
-    ifelse app-info? and app [
-      set aux app-recomendations
-      ifelse aux = 0 [
-        ifelse (  ([lock?] of location) = 1 and ( not violents-in-my-room ) ) or ([hidden-places - hidden-people] of location > 0) [
-          set state "hidden"
-        ][
-          set state "running-away" ; there is no place to hide, so, run away
-        ]
+    if not in-secure-room? and percived-risk > 0 [
+      ;ifelse ( distance (min-one-of violents [distance myself])) < 5 and ([hidden-places - hidden-people] of location)  > 0  [
+      set aux location
+      ifelse any? violents with[ member? location ([reacheables] of aux) ] and ([hidden-places - hidden-people] of location)  > 0  [
+        set state "hidden"
       ][
         set state "running-away"
       ]
-    ][
-      if not in-secure-room? and percived-risk > 0 [
-        ifelse (distance (min-one-of violents [distance myself])) < 5 and ([hidden-places - hidden-people] of location)  > 0  [
-          set state "hidden"
-        ][
-          set state "running-away"
-        ]
-      ]
     ]
   ]
-
 end
 
 
@@ -401,25 +400,27 @@ end
 
 
 to follow-leader
-  set color 49
+  ifelse any? ([visibles] of location) with [ id - floor id < 0.099 ] [
+    set route ( [my-shortest-route exits_routes] of location )
+    follow-route route
 
-  ifelse leader != nobody [
-    ;set location [location] of leader
-    set next-location [next-location] of leader
-    face next-location
-    ;fd speed
-    if location != next-location [
-      ask (link ([who] of location) ([who] of next-location) ) [
-        if flow-counter >= 0 [
-          set flow-counter flow-counter - 1
-          ask myself [fd speed]
-        ]
-      ]
-    ]
   ][
-    run-away
+    ifelse leader != nobody [
+      set color 48
+      ifelse ( [location] of leader = location)[
+        set next-location [next-location] of leader
+      ][
+        set next-location [location] of leader
+      ]
+      advance
+    ][
+      set state "running-away"
+      run-away
+    ]
   ]
 end
+
+
 
 to run-away
   if leadership = 0 [set color green]
@@ -428,18 +429,13 @@ to run-away
     ask location [set hidden-people hidden-people - 1]
     if app-info? and app [
       set route first ( sort-by [[r1 r2] -> route-distance r1 < route-distance r2 ] ([exits_routes] of location) )
+
       ask location [
         if lock? = 1 [ ask my-links with [lockable? > 0][set locked? 0] ] ; If there is a locked lock, then unlock it
       ]
     ]
   ]
-  ask location [
-    set running-people? 0.3
-    ask my-links with [transitable > 0 ][
-      ask other-end [set running-people? running-people? + 0.1]
-    ]
-  ]
-  ifelse app-info? and app or leadership > 0 [
+  ifelse (app-info? and app) or leadership > 0 [
     follow-route route
   ][
     if location = next-location [search-intuitive-node]
@@ -483,7 +479,6 @@ end
 
 
 to keep-working
-  ;if any? peacefuls with [location = [location] of myself and state = "running-away" ] [set state "running-away"]
   if percived-risk > 0.5 [set state "running-away"]
 end
 
@@ -518,16 +513,12 @@ to follow-route [#route]
     ifelse not empty? [my-secure-routes] of location [
       set route [my-shortest-route my-secure-routes] of location
     ][
-      set route [my-least-bad-route] of location
+      set route [my-shortest-route exits_routes] of location
+
     ]
   ][
     ifelse location != next-location [
-      ifelse [capacity <= residents] of next-location [
-        set next-location location
-      ][
-        advance
-      ]
-
+      advance
     ][
       let pos-aux (position loc-aux #route)
       set next-location one-of nodes with [ id = ( item (pos-aux + 1) #route) ]
@@ -536,62 +527,68 @@ to follow-route [#route]
   ]
 end
 
+
+
 to advance ; go to next-node
   ifelse distance next-location < 0.7 [ ; Avanzamos hasta alcanzar el siguiente nodo
     set location next-location
     set last-locations (sentence (bf last-locations) location)
+    ask location [
+      set running-people? 0.3
+      ask my-links with [transitable > 0 ][ ask other-end [set running-people? running-people? + 0.1] ]
+    ]
   ][
-    ask (link ([who] of location) ([who] of next-location) ) [
-      if flow-counter >= 0 [
-        set flow-counter flow-counter - 1
-        ask myself [fd speed]
+
+    if location != next-location [
+      ask (link ([who] of location) ([who] of next-location) ) [
+
+        if flow-counter >= 0 [
+          set flow-counter flow-counter - 1
+
+          ask myself [
+            if [capacity > residents] of next-location [
+              face next-location
+              fd speed
+            ]
+          ]
+        ]
       ]
     ]
   ]
 end
 
 
+
 to search-intuitive-node
-  let destinations []
-  ask location [
-    ask my-links with [transitable > 0] [
-      if [capacity - residents] of other-end > 0 [
-        set destinations (sentence destinations other-end)
-      ]
-    ]
-  ]
+  let destinations ([reacheables] of location)
 
-  if not empty? destinations [
+  let secure-destinations (destinations with [not any? people-here with [p-type = "violent"]])
+  if any? secure-destinations [set destinations secure-destinations]
 
-    set destinations turtle-set destinations
-
-    let secure-destinations (destinations with [not any? people-here with [p-type = "violent"]])
-    if any? secure-destinations [set destinations secure-destinations]
-
-    ifelse any? destinations with[ (id - floor id)< 0.02] [ ; The agent has found an exit
-        set next-location one-of destinations with [ (id - floor id)< 0.099]
+  ifelse any? ([visibles] of location) with[ (id - floor id)< 0.099] [ ; The agent has found an exit
+    follow-route ( [my-shortest-route exits_routes] of location )
+  ][
+    ifelse any? destinations with[ member? (floor id) exits and (not any? people-here with [p-type = "violent"]) ] [
+      set next-location one-of destinations with [ member? (floor id) exits ]
     ][
-      ; Ha encontrado una sala con salida
-      ifelse any? destinations with[ member? (floor id) exits and (not any? people-here with [p-type = "violent"]) ] [
-        set next-location one-of destinations with [ member? (floor id) exits ]
-      ][
-        set aux (last-locations)
+      set aux (last-locations)
 
-        ifelse any? destinations with[ not (member? who aux)  ] [
-          set next-location one-of destinations with[ not (member? who aux)]
-        ][
-          set next-location one-of destinations
-        ]
+      ifelse any? destinations with[ not (member? who aux)  ] [
+        set next-location one-of destinations with[ not (member? who aux)]
+      ][
+        set next-location one-of destinations
       ]
     ]
-    face next-location
   ]
+  face next-location
+
 end
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;   FUZZY FUNCTIONS   ;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 to create-fuzzy-sets
 
   set low-risk        fuzzy:gaussian-set [0   20 [0 100]]
@@ -646,7 +643,7 @@ to move-attacker
         set location destination
       ][
         face destination
-        fd 0.4
+        fd speed
       ]
     ]
   ]
@@ -702,18 +699,19 @@ to update-world
     set fire-sound? 0
     set bomb-sound? 0
     set scream? 0
-    set running-people? 0
+    set running-people? ( count people with [location = myself and ( state = "running-away" or state = "with-leader" ) ] )
+    ; OJO comentar la linea anterior
 
     set residents ( (count people with [location = myself and hidden = false and p-type = "peaceful" ]) )
-  ]
 
-  ;ask people [set label ""]
+  ]
 
   ask transitable-edges[
     let n1 end1
     let n2 end2
     ifelse any? people with [location = n1 and next-location = n2 or location = n2 and next-location = n1 ] [
       set flow-counter (flow-counter + flow)
+      if flow-counter > flow [ set flow-counter flow ]
     ][
       set flow-counter flow
     ]
@@ -846,7 +844,7 @@ num-peacefuls
 num-peacefuls
 1
 300
-200.0
+300.0
 1
 1
 NIL
@@ -915,7 +913,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.1
+0.05
 0.05
 1
 NIL
@@ -952,7 +950,7 @@ attackers-efectivity
 attackers-efectivity
 0
 1
-0.25
+0.5
 0.05
 1
 NIL
@@ -966,7 +964,7 @@ SLIDER
 max-iter
 max-iter
 0
-5000
+1000
 0.0
 5
 1
@@ -991,7 +989,7 @@ SWITCH
 48
 app-info?
 app-info?
-1
+0
 1
 -1000
 
