@@ -692,7 +692,7 @@ to shoot [#visibles]
   ask one-of peacefuls with [member? location #visibles][
     ask location [ set corpses? corpses? + 0.2 ]
     ifelse app [ set app-killed app-killed + 1 ][ set not-app-killed not-app-killed + 1 ]
-    die
+
   ]
 
 end
