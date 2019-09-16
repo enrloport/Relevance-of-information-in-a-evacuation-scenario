@@ -12,4 +12,4 @@ Now we can run evacuation_scenario.nlogo in NetLogo. It reads the new nodes_NL.c
 
 
 You can find other utilities in the extras folder.
-The file social_forces.nlogo is an adapted implementation of the work made by Dirk Helbing y Péter Molnár in https://journals.aps.org/pre/abstract/10.1103/PhysRevE.51.4282 
+The file social_forces.nlogo is an adapted implementation of the work made by Dirk Helbing and Péter Molnár in https://journals.aps.org/pre/abstract/10.1103/PhysRevE.51.4282 
