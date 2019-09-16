@@ -552,7 +552,7 @@ to advance ; go to next-node
         search-intuitive-node
       ][
         ask (link ([who] of location) ([who] of next-location) ) [
-          if flow-counter >= 0 [
+          if flow-counter > 0 [
             ask myself [
               if [capacity > residents] of next-location [
                 face next-location
@@ -732,7 +732,15 @@ to update-world
     set running-people? 0
   ]
 
-  ask transitable-edges[ set flow-counter flow ]
+  ask transitable-edges[
+    ifelse flow-counter < 0 [
+      set flow-counter flow-counter + flow
+    ][
+      set flow-counter flow
+    ]
+
+  ]
+
 
   ask violents [
     let efct-aux efectivity
@@ -1002,9 +1010,9 @@ shooting?
 
 SWITCH
 213
-117
+167
 325
-150
+200
 app-info?
 app-info?
 0
@@ -1029,7 +1037,7 @@ NIL
 1
 
 SLIDER
-8
+10
 166
 195
 199
