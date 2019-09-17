@@ -553,7 +553,7 @@ to advance ; go to next-node
         search-intuitive-node
       ][
         ask (link ([who] of location) ([who] of next-location) ) [
-          if flow-counter > 0 [
+          if flow-counter >= 0 [
             ask myself [
               if [capacity > residents] of next-location [
                 face next-location
