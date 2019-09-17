@@ -553,7 +553,7 @@ to advance ; go to next-node
         search-intuitive-node
       ][
         ask (link ([who] of location) ([who] of next-location) ) [
-          if flow-counter >= 0 [
+          if flow-counter >= 1 [
             ask myself [
               if [capacity > residents] of next-location [
                 face next-location
@@ -737,7 +737,7 @@ to update-world
   ]
 
   ask transitable-edges[
-    ifelse flow-counter < 0 [
+    ifelse flow-counter < 1 [
       set flow-counter flow-counter + flow
     ][
       set flow-counter flow
