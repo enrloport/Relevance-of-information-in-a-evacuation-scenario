@@ -34,10 +34,6 @@ class graph (object):
             nodes = n.readlines()
             self.header = nodes[0]
             nodes = nodes[1:]
-#        n1 = [ [y.strip() for y in x.split(',')] for x in nodes if len(x) > 1]
-#        last = [ x[-1] for x in n1 ]
-#        print(last)
-#        print(n1[0])
         nodes = [ [float(y.strip())  if len(y.strip()) < 6 else y.strip() for y in x.split(',')]  for x in nodes if len(x)>1]
         print(nodes)
         print("\n" , nodes[0][-2] , "\n")
