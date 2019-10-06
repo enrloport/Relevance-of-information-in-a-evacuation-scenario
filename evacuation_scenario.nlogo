@@ -3,7 +3,6 @@ extensions [fuzzy nw csv]
 globals [
   aux
   exits
-  nodes_with_exits
   file
   leaders
   not-leaders
@@ -15,6 +14,7 @@ globals [
   not-app-rescued
   total-killed
   total-rescued
+  violents-killed
 
   low-risk
   high-risk
@@ -45,13 +45,15 @@ nodes-own [
   corpses?
   scream?
   running-people?
+  lock?
+  leaders?
   id
   info
   capacity
   habitable
+  accident-prob
   hidden-places
   hidden-people
-  lock?
   residents
   exits_routes
   rooms_routes
@@ -72,7 +74,7 @@ links-own [
   flow-counter
 ]
 
-people-own [ ; agentes móviles
+people-own [ ;agentes móviles
   app
   attacker-heard
   attacker-sighted
@@ -86,7 +88,9 @@ people-own [ ; agentes móviles
   percived-risk
   destination
   efectivity
+  detected
   fear
+  sensibility
   hidden
   leader
   leadership
@@ -111,6 +115,7 @@ to setup
   set app-rescued 0
   set not-app-killed 0
   set not-app-rescued 0
+  set violents-killed 0
   set exits []
   set speed mean-speed
 
@@ -186,6 +191,8 @@ to setup
     set fire-heard 0
     set bomb-heard 0
     set fear 0
+    set sensibility ( 0.9 + random-float 0.2 ) ; Between 0.9 and 1.1. This parameter determines the level in which the signals affects to the fear
+
     set percived-risk 0
 
     ifelse random-float 1 < app-percentage / 100 [ set app true ][ set app false ]
@@ -198,13 +205,13 @@ to setup
       set color white
     ]
 
-    set movility ( speed - 0.2 + random-float 0.4 )
-;    set label movility
+    set movility ( speed - (max-speed-deviation) + random-float (2 * max-speed-deviation) )
 
     set leader nobody
-    set aux one-of nodes with [residents < capacity]
-    set location aux
-    ask aux [set residents residents + 1 ]
+
+    set location one-of nodes with [residents < capacity]
+    ask location [set residents residents + 1 ]
+
     set last-locations (list nobody nobody nobody nobody)
     set next-location location
     set route []
@@ -214,20 +221,26 @@ to setup
 
   create-people num-violents [
     set shape "person"
-    set color red
+    set detected 0
+    set color 17
     set p-type "violent"
-
+    set movility attackers-speed
     set location one-of nodes
     set last-locations (list nobody nobody location location)
     set destination location
+    set route []
     set efectivity attackers-efectivity
     move-to location
   ]
 
-  ; create some turtle sets
-  set violents turtle-set (people with [p-type = "violent"] )
-  set peacefuls turtle-set (people with [p-type = "peaceful"])
-  set leaders turtle-set (people with [leadership > 0])
+  ; A label for the violent's targets
+  ;if target-node > -1 [ ask node target-node [set label "T"] ]
+  if target-agent > -1 [ ask person (target-agent + (count nodes) ) [set size 1.5] ]
+
+  ; Create some turtle sets
+  set violents    turtle-set (people with [p-type = "violent"] )
+  set peacefuls   turtle-set (people with [p-type = "peaceful"])
+  set leaders     turtle-set (people with [leadership > 0])
   set not-leaders turtle-set (peacefuls with [leadership = 0])
 
   set not-alerted count people with [state = "not-alerted"]
@@ -241,10 +254,7 @@ end
 ;;                                                                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
 to go
-
   set not-alerted count people with [state = "not-alerted"]
   ; STOP conditions
   if (num-peacefuls = app-killed + app-rescued + not-app-killed + not-app-rescued) or (max-iter > 0 and ticks = max-iter) [stop]
@@ -253,14 +263,21 @@ to go
 
   ask violents [
     let loc location
-    ifelse shooting?[
-      set aux [visibles] of location
-      ifelse any? peacefuls with [ member? location aux ] [
-        shoot aux
-      ][move-attacker]
+
+    ifelse target-node >= 0 or ( target-agent >= 0 and person (count nodes + target-agent) != nobody ) [
+      find-target
     ][
-      ifelse any? peacefuls with [location = loc and not hidden][attack][move-attacker]
+      ifelse shooting?[
+        set aux [visibles] of location
+        ifelse any? peacefuls with [ member? location aux ] [
+          shoot aux
+        ][move-attacker]
+      ][
+        ifelse any? peacefuls with [location = loc and not hidden][attack][move-attacker]
+      ]
     ]
+
+
   ]
 
   ask peacefuls [
@@ -284,6 +301,173 @@ to go
   ]
   tick
 end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                       ;;
+;;*****************************  ATTACKERS  *****************************;;
+;;                                                                       ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+to find-target
+
+  set aux location
+  let t-agent ( target-agent + (count nodes) )
+
+  ; The attacker will search for the target agent first
+  ifelse target-agent >= 0 and person t-agent != nobody [
+    ;set label "H0"
+    ifelse aux = [location] of person t-agent [
+      ifelse shooting? [shoot (list location) ][attack]
+      set detected 1
+      set route []
+    ][
+      ifelse empty? route [
+        set route ( bfs (n-values (count nodes) [x -> x] ) (list ([who] of aux)) [] ([who] of ([location] of person t-agent ) ) )
+        follow-route2
+      ][
+        follow-route2
+      ]
+    ]
+  ][
+    if target-node >= 0[
+      ;set label "H1"
+      ifelse [who] of location = target-node [
+        ifelse shooting? [shoot [visibles] of location][attack]
+      ][
+        ;set label "H2"
+        if empty? route [ set route ( bfs (n-values (count nodes) [x -> x] ) (list ([who] of aux)) [] target-node ) ]
+        follow-route2
+
+      ]
+    ]
+  ]
+end
+
+to follow-route2
+
+  ifelse location = destination [
+    ifelse [who] of location = last route [
+      set route []
+    ][
+      let loc-aux ([who] of location)
+      let pos-aux (position loc-aux route)
+      set destination node ( item (pos-aux + 1) route)
+      face destination
+    ]
+  ][
+    violent-advance
+  ]
+end
+
+to violent-advance
+
+  ifelse distance destination < 0.5 [ ; The agent has reached next-location
+    ask location [set residents residents - 1]
+    set location destination
+    ask location [
+      set residents residents + 1
+
+    ]
+
+    set last-locations (sentence (bf last-locations) location)
+
+  ][
+    ask (link ([who] of location) ([who] of destination) ) [
+      if flow-counter >= 1 [
+        ask myself [
+          if [capacity > residents] of destination [
+            face destination
+            set aux distance destination
+            ifelse movility > aux [fd aux][fd movility]
+          ]
+        ]
+        set flow-counter flow-counter - 1
+      ]
+    ]
+  ]
+end
+
+
+to move-attacker
+  ifelse location = destination [
+    set last-locations (sentence (bf last-locations) location)
+    attacker-destination
+  ][
+    set aux ([id] of destination)
+    let aux2 [id] of location
+    ; if the door is locked, the violent backs to his location
+    ifelse ([transitable] of link ([who] of location) ([who] of destination)) = 0 [
+      set destination location
+    ][
+      ifelse distance destination < 0.5 [
+        set location destination
+      ][
+        face destination
+        fd movility
+      ]
+    ]
+  ]
+end
+
+to attack
+  set p-type "violent"
+  ask location [set habitable 0]
+  let l location
+  if random-float 1 < efectivity [
+    if any? people with [location = l and hidden = false and p-type = "peaceful"][
+      ask one-of people with [location = l and hidden = false and p-type = "peaceful"][
+        ifelse app [set app-killed app-killed + 1] [set not-app-killed not-app-killed + 1]
+        ask location [
+          set corpses? corpses? + 0.2
+          set residents residents - 1
+          ask my-links with [sound > 0] [
+            ask other-end [set scream? 0.5 * ([sound] of myself )]
+          ]
+        ]
+        die
+      ]
+    ]
+  ]
+end
+
+to shoot [#visibles]
+  if any? peacefuls with [member? location #visibles][
+    ask location [
+      set attacker-sound? attacker-sound? + 0.5
+      ask my-links with [sound > 0] [
+        let s-aux sound
+        ask other-end [set attacker-sound? attacker-sound? + 0.5 * s-aux]
+      ]
+    ]
+    ask one-of peacefuls with [member? location #visibles][
+      ask location [
+        set corpses? corpses? + 0.2
+        set residents residents - 1
+      ]
+      ifelse app [ set app-killed app-killed + 1 ][ set not-app-killed not-app-killed + 1 ]
+      die
+    ]
+  ]
+
+
+end
+
+to attacker-destination
+  let destinations []
+  ask location [ set destinations ( sentence destinations ( [other-end] of my-links with [transitable > 0] ) ) ]
+  set destinations ( filter [ x -> not member? x last-locations] destinations)
+  ifelse empty? destinations [
+    set destination one-of ( [[other-end] of my-links with [transitable > 0]] of location )
+  ][
+    set destination max-one-of (turtle-set destinations) [residents]
+  ]
+
+end
+
+
 
 
 
@@ -323,7 +507,7 @@ to peaceful-believe
       set dis-aux 15
     ][
       let nearest-dangerous-node min-one-of nodes with [habitable < 1] [distance myself]
-      set dis-aux distance nearest-dangerous-node
+      if nearest-dangerous-node != nobody [set dis-aux distance nearest-dangerous-node]
     ]
 
     compute-danger (dis-aux) (percived-signals * 100)
@@ -337,25 +521,33 @@ to peaceful-believe
 end
 
 to peaceful-desire [#fire-sighted #fire-heard #attacker-sighted  #attacker-heard #bomb-sighted #bomb-heard #scream-heard #running-people #percived-risk #fear]
-  ifelse app-info? and app [
-    set aux app-recomendations
-    ifelse aux = 0 [
-      ifelse (  ([lock?] of location) = 1 and ( not violents-in-my-room ) ) or ([hidden-places - hidden-people] of location > 0) [
-        set state "hidden"
+
+  ;; Aqui hay que implementar lo de recomendar esconderse y seguir la ruta hasta la sala
+
+  ifelse app-info? and app [        ; If the agent is receiving information...
+    ifelse app-recomendations = 0 [ ; The app says "hide" and it will recomend a route to the agent
+
+      ifelse (([lock?] of location) = 1 and (not violents-in-my-room)) or ([hidden-places - hidden-people] of location > 0) [
+        set state "hidden"          ; The agent has found a place to hide or is in a lockable room
       ][
         set state "running-away" ; there is no place to hide, so, run away
         set route ( [my-least-bad-route] of location )
       ]
     ][
-      set state "running-away"
+      ifelse app-recomendations = 1 [
+        set state "running-away"
+      ][
+        set state "running-away"
+      ]
     ]
+
   ][
     set aux location
     if not in-secure-room? and percived-risk > 0 [
       ifelse any? violents with[ member? location ([reacheables] of aux) ] and ([hidden-places - hidden-people] of location)  > 0  [
         set state "hidden"
       ][
-        ifelse any? violents with [aux = location] and ([residents] of location) > 9 [
+        ifelse any? violents with [aux = location] and ([residents] of location) > ( 10 * count (violents with [aux = location]) ) [
           set state "fighting"
         ][
           set state "running-away"
@@ -368,7 +560,9 @@ end
 
 
 to peaceful-intention
-  ifelse state = "not-alerted"        [keep-working][
+  ifelse state = "not-alerted" [
+    keep-working
+  ][
     ifelse [ id - (floor id) ] of location < 0.099 [ ; if the agent has been alerted and has reached an exit, evacuate it
       ifelse app [set app-rescued app-rescued + 1][set not-app-rescued not-app-rescued + 1]
       ask location [set residents residents - 1]
@@ -425,7 +619,7 @@ to run-away
   ifelse (app-info? and app) or leadership > 0 [
     follow-route route
   ][
-    if location = next-location [search-intuitive-node]
+    if location = next-location or [residents] of next-location = [capacity] of next-location [search-intuitive-node]
     advance
   ]
 end
@@ -433,9 +627,8 @@ end
 to hide
   if hidden = false[
     set hidden true
-    if leadership = 0 [set color grey]
-    ask location [set hidden-people hidden-people + 1]
-    if [lock? = 1] of location  and (not violents-in-my-room) [
+
+    ifelse [lock? = 1] of location  and (not violents-in-my-room) [
       set color pink
       ask location [
         ask my-links with [lockable? > 0] [
@@ -445,8 +638,13 @@ to hide
           ]
         ]
       ]
+    ][
+      if leadership = 0 [set color grey]
+      ask location [set hidden-people hidden-people + 1]
     ]
   ]
+
+
 end
 
 to fight
@@ -454,7 +652,10 @@ to fight
   if leadership = 0 [set color black]
   if random-float 1 < 0.1 [
     set aux location
-    ask one-of violents with [location = aux] [die]
+    ask one-of violents with [location = aux] [
+      set violents-killed violents-killed + 1
+      die
+    ]
   ]
 end
 
@@ -637,91 +838,12 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                       ;;
-;;*****************************  ATTACKERS  *****************************;;
-;;                                                                       ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-to move-attacker
-  ifelse location = destination [
-    set last-locations (sentence (bf last-locations) location)
-    attacker-destination
-  ][
-    set aux ([id] of destination)
-    let aux2 [id] of location
-    ; if the door is locked, the violent backs to his location
-    ifelse ([transitable] of link ([who] of location) ([who] of destination)) = 0 [
-      set destination location
-    ][
-      ifelse distance destination < 0.5 [
-        set location destination
-      ][
-        face destination
-        fd 0.6
-      ]
-    ]
-  ]
-end
-
-to attack
-  let l location
-  if random-float 1 < efectivity [
-    if any? people with [location = l and hidden = false and p-type = "peaceful"][
-      ask one-of people with [location = l and hidden = false and p-type = "peaceful"][
-        ifelse app [set app-killed app-killed + 1] [set not-app-killed not-app-killed + 1]
-        ask location [
-          set corpses? corpses? + 0.2
-          set residents residents - 1
-          ask my-links with [sound > 0] [
-            ask other-end [set scream? 0.5 * ([sound] of myself )]
-          ]
-        ]
-        die
-      ]
-    ]
-  ]
-end
-
-to shoot [#visibles]
-  ask location [
-    set attacker-sound? attacker-sound? + 0.5
-    ask my-links with [sound > 0] [
-      let s-aux sound
-      ask other-end [set attacker-sound? attacker-sound? + 0.5 * s-aux]
-    ]
-  ]
-  ask one-of peacefuls with [member? location #visibles][
-    ask location [
-      set corpses? corpses? + 0.2
-      set residents residents - 1
-    ]
-    ifelse app [ set app-killed app-killed + 1 ][ set not-app-killed not-app-killed + 1 ]
-    die
-  ]
-
-end
-
-to attacker-destination
-  let destinations []
-  ask location [ set destinations ( sentence destinations ( [other-end] of my-links with [transitable > 0] ) ) ]
-  set destinations ( filter [ x -> not member? x last-locations] destinations)
-  ifelse empty? destinations [
-    set destination one-of ( [[other-end] of my-links with [transitable > 0]] of location )
-  ][
-    set destination max-one-of (turtle-set destinations) [residents]
-  ]
-
-end
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                       ;;
 ;;*******************************  WORLD  *******************************;;
 ;;                                                                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-;Changes the habitable atribute in nodes depending on danger location, it also update the counter-flow in edges
+;Changes the habitable atribute in nodes depending on danger location, it also updates the counter-flow in edges
 to update-world
 
   ask nodes [
@@ -747,20 +869,22 @@ to update-world
 
 
   ask violents [
-    let efct-aux efectivity
+    if detected > 0 [
+      let efct-aux efectivity
 
-    ask location [
-      set habitable 1 - efct-aux
-      set attacker? efct-aux
+      ask location [
+        set habitable 1 - efct-aux
+        set attacker? efct-aux
 
-      ask my-links [
-        let visib-aux visibility
-        let sound-aux sound
-        let dist-aux dist
-        if visibility > 0 [
-          ask other-end [
-            set attacker? (attacker? + (visib-aux * efct-aux) )
-            if attacker? > 1 [ set attacker? 1]
+        ask my-links [
+          let visib-aux visibility
+          let sound-aux sound
+          let dist-aux dist
+          if visibility > 0 [
+            ask other-end [
+              set attacker? (attacker? + (visib-aux * efct-aux) )
+              if attacker? > 1 [ set attacker? 1]
+            ]
           ]
         ]
       ]
@@ -820,15 +944,100 @@ end
 to-report my-least-bad-route
   report first ( sort-by [ [route1 route2 ] -> secure-route? route1 < secure-route? route2 ] exits_routes )
 end
+
+
+
+
+
+; BREADTH FIRST SEARCH: It returns the shortest path (list) between two nodes. (The graph satisfies the triangular property)
+; Inputs:
+; queue  = A list of unexplored nodes. A list with all nodes in the call to the function.
+; next   = A list with the secuence of nodes to be explored. A list with only origin node in the call to the function;
+; res    = A list of lists with the diferent routes. An empty list in the call to the function
+; target = The node we want to reach
+
+to-report bfs [#queue #next #res #target]
+
+  ; First we make a copy of the input-params
+  let current    (first #next)
+  let next-copy  #next
+  let queue-copy #queue
+  let res-copy   #res     ; A copy to modify values
+  let rc         res-copy ; Another copy to iterate over it
+
+  ; The list of neighbours of the current node, only those that have not been explored yet.
+  let neighs ( filter [x -> not member? x next-copy] [[who] of reacheables] of node current )
+
+  ; In the first iteration we have an empty list (#res), so we have to populate it with the origin node neighbours'
+  ; If any of this neighbours is the destiny, we are going to return the result
+  foreach neighs [
+    x ->
+    if member? x queue-copy [ set next-copy (lput x next-copy) ]
+    ifelse x = #target [report (list current x)][set res-copy lput (list current x) res-copy]
+  ]
+
+  ; Iterator. Go to the next node and explore its neighbours until we reach the target
+  while [not empty? queue-copy]
+  [
+    set current first next-copy
+    set next-copy bf next-copy
+    set queue-copy (remove current queue-copy)
+    set rc res-copy
+
+    ; The list of neighbours of the current node, only those that have not been explored yet.
+    set neighs ( filter [x -> not member? x next-copy] [[who] of reacheables] of node current )
+    foreach neighs [ x -> if member? x queue-copy [ set next-copy (lput x next-copy) ] ]
+
+    foreach rc [
+      x ->
+      if last x = current [
+        foreach neighs [
+          n ->
+          ifelse n = #target [
+            report (lput n x)
+          ][
+            if member? n queue-copy [
+              set aux (lput n x)
+              set res-copy (lput aux res-copy)
+            ]
+          ]
+        ]
+        set res-copy (remove x res-copy)
+      ]
+    ]
+  ]
+  report [] ; If this report is reached, probably we set a target node that does not exits in the graph
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
-336
-8
-1137
-290
+308
+12
+945
+403
 -1
 -1
-13.0
+12.33333333333334
 1
 10
 1
@@ -839,9 +1048,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-60
+50
 0
-20
+30
 0
 0
 1
@@ -849,10 +1058,10 @@ ticks
 30.0
 
 BUTTON
-212
-19
-267
-54
+309
+408
+364
+443
 NIL
 setup
 NIL
@@ -866,40 +1075,40 @@ NIL
 1
 
 SLIDER
-12
-87
-195
-120
+162
+166
+303
+199
 num-peacefuls
 num-peacefuls
 1
-2000
-639.0
+1000
+300.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-10
-226
-194
-259
+7
+202
+140
+235
 num-violents
 num-violents
 0
 10
-2.0
+9.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-270
-19
-325
-56
+432
+408
+488
+445
 NIL
 go
 T
@@ -913,10 +1122,10 @@ NIL
 1
 
 MONITOR
-280
-372
-378
-417
+956
+236
+1054
+281
 not-app: Red
 not-app-rescued
 17
@@ -924,10 +1133,10 @@ not-app-rescued
 11
 
 MONITOR
-615
-374
-712
-419
+957
+410
+1054
+455
 NIL
 not-app-killed
 17
@@ -935,25 +1144,25 @@ not-app-killed
 11
 
 SLIDER
-10
-128
-194
-161
+162
+202
+304
+235
 leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.05
+0.1
 0.05
 1
 NIL
 HORIZONTAL
 
 MONITOR
-280
-324
-378
-369
+956
+188
+1054
+233
 app: Blue
 app-rescued
 17
@@ -961,10 +1170,10 @@ app-rescued
 11
 
 MONITOR
-615
-324
-712
-369
+957
+360
+1054
+405
 NIL
 app-killed
 17
@@ -972,10 +1181,10 @@ app-killed
 11
 
 SLIDER
-10
-266
-195
-299
+7
+242
+140
+275
 attackers-efectivity
 attackers-efectivity
 0
@@ -987,25 +1196,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-10
-12
-195
-45
+7
+34
+147
+67
 max-iter
 max-iter
 0
 1000
-0.0
+585.0
 5
 1
 NIL
 HORIZONTAL
 
 SWITCH
-213
-228
-324
-261
+17
+166
+128
+199
 shooting?
 shooting?
 0
@@ -1013,21 +1222,21 @@ shooting?
 -1000
 
 SWITCH
-213
-167
-325
-200
+180
+37
+292
+70
 app-info?
 app-info?
-0
+1
 1
 -1000
 
 BUTTON
-212
-61
-267
-96
+369
+408
+424
+443
 once
 go
 NIL
@@ -1035,31 +1244,31 @@ NIL
 T
 OBSERVER
 NIL
-NIL
+O
 NIL
 NIL
 1
 
 SLIDER
-10
 166
-195
-199
+75
+304
+108
 app-percentage
 app-percentage
 0
 100
-10.0
+50.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-280
-426
-378
-471
+956
+290
+1054
+335
 total-rescued
 app-rescued + not-app-rescued
 17
@@ -1067,10 +1276,10 @@ app-rescued + not-app-rescued
 11
 
 MONITOR
-615
-428
-712
-473
+957
+464
+1054
+509
 total-killed
 app-killed + not-app-killed
 17
@@ -1078,10 +1287,10 @@ app-killed + not-app-killed
 11
 
 SLIDER
-12
-48
-195
-81
+162
+240
+305
+273
 mean-speed
 mean-speed
 1
@@ -1093,10 +1302,10 @@ NIL
 HORIZONTAL
 
 PLOT
-72
-322
-272
-472
+1059
+14
+1259
+164
 not alerted people
 tick
 people
@@ -1111,10 +1320,10 @@ PENS
 "not-alerted" 1.0 0 -13345367 true "" "plot (count peacefuls with [state = \"not-alerted\"])\n\n"
 
 PLOT
-384
-322
-584
-472
+1060
+186
+1260
+336
 rescued
 NIL
 NIL
@@ -1130,10 +1339,10 @@ PENS
 "pen-1" 1.0 0 -13345367 true "" "plot app-rescued"
 
 PLOT
-718
-324
-918
-474
+1060
+360
+1260
+510
 killed
 NIL
 NIL
@@ -1147,6 +1356,119 @@ false
 PENS
 "default" 1.0 0 -13345367 true "" "plot app-killed"
 "pen-1" 1.0 0 -2674135 true "" "plot not-app-killed"
+
+SLIDER
+162
+281
+306
+314
+max-speed-deviation
+max-speed-deviation
+0
+0.5
+0.5
+0.01
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+30
+13
+130
+31
+World - params
+12
+0.0
+1
+
+TEXTBOX
+172
+144
+302
+174
+Peacefuls - params
+12
+0.0
+1
+
+TEXTBOX
+23
+144
+136
+174
+Violents - params
+12
+0.0
+1
+
+SLIDER
+6
+282
+140
+315
+attackers-speed
+attackers-speed
+0.1
+2
+0.8
+0.1
+1
+NIL
+HORIZONTAL
+
+INPUTBOX
+70
+360
+140
+420
+target-agent
+-1.0
+1
+0
+Number
+
+INPUTBOX
+2
+360
+70
+420
+target-node
+4.0
+1
+0
+Number
+
+TEXTBOX
+196
+15
+296
+33
+App - params
+12
+0.0
+1
+
+TEXTBOX
+14
+328
+138
+364
+Negative values to deactivate targets
+12
+0.0
+1
+
+MONITOR
+952
+16
+1054
+62
+violents-killed
+violents-killed
+0
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
