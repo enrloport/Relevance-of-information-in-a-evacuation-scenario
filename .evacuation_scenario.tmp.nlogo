@@ -686,7 +686,13 @@ end
 
 
 to keep-working
-  if percived-risk > 0.5 [set state "running-away"]
+  ifelse percived-risk > 0.5 [
+    set state "running-away"
+  ][
+    if random-float 1 < 0.3 [
+
+
+  ]
 end
 
 
@@ -1107,7 +1113,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-200.0
+300.0
 1
 1
 NIL
@@ -1122,7 +1128,7 @@ num-violents
 num-violents
 0
 10
-2.0
+9.0
 1
 1
 NIL
