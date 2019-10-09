@@ -61,6 +61,7 @@ nodes-own [
   rooms_routes
   reacheables
   visibles
+  nearest-danger
 ]
 
 links-own [
@@ -124,7 +125,6 @@ to setup
 
   create-fuzzy-sets
 
-
   ;; CREATE NODES
   set file (csv:from-file "nodes_NL.csv" ",")
   let cabecera first file
@@ -148,7 +148,6 @@ to setup
     ]
   ]
 
-
   ;; CREATE EDGES
   set file (csv:from-file "edges_NL.csv" ",")
   set cabecera first file
@@ -171,7 +170,6 @@ to setup
   ]
   set transitable-edges (link-set links with [transitable > 0] )
 
-
   ask nodes [
     let r-aux reacheables
     set reacheables nodes with[ member? id r-aux ]
@@ -180,12 +178,10 @@ to setup
 
   ;; CREATE PECEFULS
   create-people num-peacefuls [
-
     set shape "person"
     set p-type "peaceful"
     set state "not-alerted"
     set hidden false
-
     set attacker-sighted 0
     set fire-sighted 0
     set bomb-sighted 0
@@ -194,8 +190,14 @@ to setup
     set bomb-heard 0
     set fear 0
     set sensibility ( 0.9 + random-float 0.2 ) ; Between 0.9 and 1.1. This parameter determines the level in which the signals affects to the fear
-
     set percived-risk 0
+    set movility not-alerted-speed
+    set leader-sighted nobody
+    set location one-of nodes with [residents < capacity]
+    ask location [set residents residents + 1 ]
+    set last-locations (list nobody nobody nobody nobody)
+    set next-location location
+    set route []
 
     ifelse random-float 1 < app-percentage / 100 [ set app true ][ set app false ]
 
@@ -206,17 +208,6 @@ to setup
       set leadership 0
       set color white
     ]
-
-    set movility ( speed - (max-speed-deviation) + random-float (2 * max-speed-deviation) )
-
-    set leader-sighted nobody
-
-    set location one-of nodes with [residents < capacity]
-    ask location [set residents residents + 1 ]
-
-    set last-locations (list nobody nobody nobody nobody)
-    set next-location location
-    set route []
     move-to location
   ]
 
@@ -224,7 +215,6 @@ to setup
     set t-agent (count nodes + target-agent) ; The agent 0 will be created with who = (0 + number of nodes), so we need to adjust this
     ask person t-agent [set size 2]
   ]
-
 
   ;; CREATE VIOLENTS
   create-people num-violents [
@@ -252,7 +242,6 @@ to setup
   reset-ticks
 end
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                                             ;;
 ;;****************************************    TO GO    ****************************************;;
@@ -272,19 +261,13 @@ to go
 
   if target-agent > -1 [
     set t-agent (count nodes + target-agent)
-    ifelse person t-agent != nobody [
-      ask person t-agent [set size 2]
-    ][
-      set target-agent -1
-    ]
+    ifelse person t-agent != nobody [ ask person t-agent [set size 2] ][ set target-agent -1 ]
   ]
-
   ask violents [
     violents-belive
     violents-desire
     violents-intention
   ]
-
   ask peacefuls [
     let loc-aux location
     ifelse leadership = 0 and any? leaders with [ location = loc-aux and state = "running-away"] [
@@ -300,10 +283,8 @@ to go
     peaceful-intention
     if fear > 0 [set fear fear - 1]
   ]
-
   tick
 end
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -316,21 +297,16 @@ end
 ;;;;;;;;;;;;;;;;;   BDI  VIOLENTS  ;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 to violents-belive
   set police-sighted police-sighted + ([police?] of location)
 end
 
 to violents-desire
-  ifelse police-sighted > 0 [
-    set state "avoiding-police"
-  ][
-    ifelse target-node >= 0 or ( target-agent >= 0 and person t-agent != nobody ) [
-      set state "finding-target"
-    ][
-      set state "aggressive-behaviour"
-    ]
-  ]
+  (ifelse
+    police-sighted > 0 [set state "avoiding-police"]
+    target-node >= 0 or ( target-agent >= 0 and person t-agent != nobody ) [set state "finding-target"]
+    [set state "aggressive-behaviour"]
+  )
 end
 
 to violents-intention
@@ -340,8 +316,6 @@ to violents-intention
     state = "aggressive-behaviour" [be-aggressive]
   )
 end
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;   STATES FUNCTIONS   ;;;;;;;;;;;;;;;;
@@ -394,10 +368,10 @@ to find-target
     if target-node >= 0[
       ifelse [who] of location = target-node [
         ifelse shooting? [shoot [visibles] of location][attack]
+        if [residents] of location = 1 [set target-node -1]
       ][
         if empty? route [ set route ( bfs ([who] of aux) target-node ) ]
         follow-route2
-
       ]
     ]
   ]
@@ -422,9 +396,7 @@ to violent-advance
   ifelse distance destination < 0.5 [ ; The agent has reached next-location
     ask location [set residents residents - 1]
     set location destination
-    ask location [
-      set residents residents + 1
-    ]
+    ask location [set residents residents + 1]
     set last-locations (sentence (bf last-locations) location)
   ][
     ask (link ([who] of location) ([who] of destination) ) [
@@ -484,8 +456,6 @@ to shoot [#visibles]
       die
     ]
   ]
-
-
 end
 
 to attacker-destination
@@ -497,7 +467,6 @@ to attacker-destination
   ][
     set destination max-one-of (turtle-set destinations) [residents]
   ]
-
 end
 
 
@@ -509,14 +478,11 @@ end
 ;;                                                                                             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;   BDI PEACEFULS  ;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to peaceful-believe
-
   set attacker-sighted attacker-sighted + [attacker?] of location
   set fire-sighted fire-sighted + [fire?] of location
   set bomb-sighted bomb-sighted + [bomb?] of location
@@ -531,15 +497,17 @@ to peaceful-believe
     + fire-heard + bomb-heard + scream-heard + corpse-sighted + running-people)
   if percived-signals > 1 [set percived-signals 1]
 
+  ;; TO DO: sustituir app-killed... por app-trigger
   if app-info? and app and app-killed + not-app-killed > 0 [set percived-signals 1]
 
   let dis-aux 0
   if percived-signals > 0 [
+    if movility = not-alerted-speed [ set movility ( speed - (max-speed-deviation) + random-float (2 * max-speed-deviation) ) ]
     ifelse running-people > 0 or (count violents) = 0[
       set dis-aux 15
     ][
       let nearest-dangerous-node min-one-of nodes with [habitable < 1] [distance myself]
-      if nearest-dangerous-node != nobody [set dis-aux distance nearest-dangerous-node]
+      ifelse nearest-dangerous-node != nobody [set dis-aux distance nearest-dangerous-node][set dis-aux 15]
     ]
 
     compute-danger (dis-aux) (percived-signals * 100)
@@ -549,42 +517,23 @@ to peaceful-believe
       set percived-risk degree-of-consistency-R2
     ]
   ]
-
 end
 
+;; TODO poner esto con el ifelse bueno
 to peaceful-desire [#fire-sighted #fire-heard #attacker-sighted  #attacker-heard #bomb-sighted #bomb-heard #scream-heard #running-people #percived-risk #fear]
 
-  ;; Esta parte será modificada para afinar la APP
+  ifelse app-info? and app and route = [] [  ; The app is giving information to the agent.
+    set state "asking-app"
 
-  ifelse app-info? and app [        ; If the agent is receiving information...
-    ifelse app-recomendations = 0 [ ; The app says "hide" and it will recomend a route to the agent
-
-      ifelse (([lock?] of location) = 1 and (not violents-in-my-room)) or ([hidden-places - hidden-people] of location > 0) [
-        set state "hidden"          ; The agent has found a place to hide or is in a lockable room
-      ][
-        set state "running-away" ; there is no place to hide, so, run away
-        set route ( [my-least-bad-route] of location )
-      ]
-    ][
-      ifelse app-recomendations = 1 [
-        set state "running-away"
-      ][
-        set state "running-away"
-      ]
-    ]
-
-  ][
+  ][ ; The agent is not receiving information. Not App beahaviour
     set aux location
     if not in-secure-room? and percived-risk > 0 [
       ifelse any? violents with[ member? location ([reacheables] of aux) ] and ([hidden-places - hidden-people] of location)  > 0  [
         set state "hidden"
       ][
-        ifelse any? violents with [aux = location] and ([residents] of location) > ( 9 * count (violents with [aux = location]) ) [
-          set state "fighting"
-        ][
-          set state "running-away"
-        ]
-
+        ifelse any? violents with [aux = location] and ([residents] of location) > ( 15 * count (violents with [aux = location]) )
+        [set state "fighting"]
+        [set state "running-away"]
       ]
     ]
   ]
@@ -598,27 +547,50 @@ to peaceful-intention
     die
   ][
     (ifelse
-      state = "not-alerted"  [keep-working]
-      state = "with-leader"  [follow-leader]
-      state = "running-away" [run-away]
-      state = "hidden"       [hide]
-      state = "fighting"     [fight]
-    )
+      state = "not-alerted"     [keep-working]
+      state = "with-leader"     [follow-leader]
+      state = "running-away"    [run-away]
+      state = "hidden"          [hide]
+      state = "fighting"        [fight]
+      state = "asking-app"      [ask-app]
+      state = "following-route" [follow-route route])
+
+    if leadership = 0 [
+      (ifelse
+        state = "with-leader"     [set color 48]
+        state = "running-away"    [set color green]
+        state = "hidden"          [set color grey]
+        state = "fighting"        [set color black]
+        state = "asking-app"      [set color white]
+        state = "following-route" [set color 57])
+    ]
   ]
 end
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;   STATES FUNCTIONS   ;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; huyendo:             running away
-; escondido:           hidden
-; luchando:            fighting
-; evacuado:            evacuated
-; desconocedor:        not-alerted
-; siguiendo a lider:   follow-leader
 
+to ask-app
+  (ifelse
+    app-recomendations = 0 [ ; The app will recomend to hide somewhere, but is not giving a route to the agent
+      set route []
+      ifelse (([lock?] of location) = 1 and (not violents-in-my-room)) or ([hidden-places - hidden-people] of location > 0)[
+        set state "hidden"
+      ][
+        set state "running-away"
+      ]
+    ]
+    app-recomendations = 1 [ ; The app gives to the agent a path to a secure-room
+      set route secure-room-path
+      set state "following-route"
+    ]
+    app-recomendations = 2 [ ; The app gives to the agent a path to evacuate
+      set route exit-path
+      set state "following-route"
+  ])
+end
 
 to follow-leader
   ifelse any? ([visibles] of location) with [ id - floor id < 0.099 ] [
@@ -626,7 +598,6 @@ to follow-leader
     follow-route route
   ][
     ifelse leader-sighted != nobody [
-      if leadership = 0 [set color 48]
       ifelse ( [location] of leader-sighted = location)[
         set next-location [next-location] of leader-sighted
       ][
@@ -641,9 +612,8 @@ to follow-leader
 end
 
 to run-away
-  if leadership = 0 [set color green]
   stop-hidden
-  ifelse (app-info? and app) or leadership > 0 [
+  ifelse leadership > 0 [
     follow-route route
   ][
     if location = next-location or [residents] of next-location = [capacity] of next-location [search-intuitive-node]
@@ -654,9 +624,8 @@ end
 to hide
   if hidden = false[
     set hidden true
-
     ifelse [lock? = 1] of location  and (not violents-in-my-room) [
-      set color pink
+      if leadership = 0 [set color pink]
       ask location [
         ask my-links with [lockable? > 0] [
           if locked? = 0 [
@@ -666,7 +635,6 @@ to hide
         ]
       ]
     ][
-      if leadership = 0 [set color grey]
       ask location [set hidden-people hidden-people + 1]
     ]
   ]
@@ -674,7 +642,6 @@ end
 
 to fight
   stop-hidden
-  if leadership = 0 [set color black]
   if random-float 1 < 0.1 [
     set aux location
     ask one-of violents with [location = aux] [
@@ -684,23 +651,17 @@ to fight
   ]
 end
 
-
 to keep-working
-  ifelse percived-risk > 0.5 [
-    set state "running-away"
-  ][
-    if random-float 1 < 0.3 [
-
-
+  if random-float 1 < 0.007 or distance location >= movility[
+    if location = next-location [ set next-location (one-of ([reacheables] of location)) ]
+    advance
   ]
 end
 
 
 to stop-hidden
-
   if hidden [
     set hidden false
-
     ifelse in-secure-room? [
       ask location [
         ask my-links with [lockable? > 0] [
@@ -721,19 +682,13 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to-report in-secure-room?
-  if [lock?] of location = 0 or any? ([my-links] of location) with [lockable? = 1 and locked? = 0] [
-    report false
-  ]
+  if [lock?] of location = 0 or any? ([my-links] of location) with [lockable? = 1 and locked? = 0] [report false]
   report true
 end
 
 to-report violents-in-my-room
   let loc-aux ( [floor id] of location)
-  ifelse any? violents with [ [floor id] of location = loc-aux ][
-    report true
-  ][
-    report false
-  ]
+  ifelse any? violents with [ [floor id] of location = loc-aux ] [report true] [report false]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -742,42 +697,38 @@ end
 
 to follow-route [#route] ; This function works with the "id" property of the nodes
   let loc-aux ([id] of location)
-
-  ifelse empty? #route or not (member? loc-aux #route) [
-    ifelse not empty? [my-secure-routes] of location [
-      set route [my-shortest-route my-secure-routes] of location
-    ][
-      set route [my-shortest-route exits_routes] of location
-    ]
-  ][
+  if not empty? #route and (member? loc-aux #route) [
     ifelse location != next-location [
       advance
     ][
-      let pos-aux (position loc-aux #route)
-      set next-location one-of nodes with [ id = ( item (pos-aux + 1) #route) ]
-      face next-location
+      ifelse [id] of location = last #route [ ; The agent has completed the route
+        set state "hidden"
+      ][
+        let pos-aux (position loc-aux #route)
+        set next-location one-of nodes with [ id = ( item (pos-aux + 1) #route) ]
+        face next-location
+      ]
     ]
   ]
 end
 
 
-
-to advance ; go to next-node
+to advance ; Go to next-node
   ifelse distance next-location < 0.6 [ ; The agent has reached next-location
     ask location [set residents residents - 1]
     set location next-location
     ask location [set residents residents + 1]
-
     set last-locations (sentence (bf last-locations) location)
-
   ][
     if location != next-location [
-      ask next-location [ set running-people? running-people? + 0.05]
-      ask location[
-        set running-people? running-people? + 0.05
-        ask my-links with [visibility > 0 ][
-          let visib-aux visibility
-          ask other-end [set running-people? (running-people? + 0.01) * visib-aux ]
+      if percived-risk > 0 [
+        ask next-location [ set running-people? running-people? + 0.05]
+        ask location[
+          set running-people? running-people? + 0.05
+          ask my-links with [visibility > 0 ][
+            let visib-aux visibility
+            ask other-end [set running-people? (running-people? + 0.02) * visib-aux ]
+          ]
         ]
       ]
 
@@ -799,9 +750,7 @@ to advance ; go to next-node
       ]
     ]
   ]
-
 end
-
 
 
 to search-intuitive-node
@@ -827,7 +776,6 @@ to search-intuitive-node
     ]
   ]
   face next-location
-
 end
 
 
@@ -836,7 +784,6 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to create-fuzzy-sets
-
   set low-risk        fuzzy:gaussian-set [0   20 [0 100]]
   set high-risk       fuzzy:gaussian-set [100 10 [0 100]]
 
@@ -848,11 +795,9 @@ to create-fuzzy-sets
 end
 
 
-
 to compute-danger [#dist #risk-level]
 
   ;; COMPUTATION OF DEGREES OF CONSISTENCY BETWEEN FACTS (INPUTS) AND ANTECEDENTS FOR EACH RULE
-
   ;; Rule 1: IF (low risk OR far from me)...
   let degree-of-consistency-R1a fuzzy:evaluation-of low-risk #risk-level
   let degree-of-consistency-R1b fuzzy:evaluation-of far-from-me #dist
@@ -862,9 +807,7 @@ to compute-danger [#dist #risk-level]
   let degree-of-consistency-R2a fuzzy:evaluation-of high-risk #risk-level
   let degree-of-consistency-R2b fuzzy:evaluation-of close-to-me #dist
   set degree-of-consistency-R2 (runresult (word "max" " list degree-of-consistency-R2a degree-of-consistency-R2b"))
-
 end
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -873,10 +816,8 @@ end
 ;;                                                                                             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-;Changes the habitable atribute in nodes depending on danger location, it also updates the counter-flow in edges
+; It changes the habitable atribute in nodes depending on danger location, also updates the counter-flow in edges
 to update-world
-
   ask nodes [
     set habitable 1
     set fire? 0
@@ -887,18 +828,15 @@ to update-world
     set bomb-sound? 0
     set scream? 0
     set running-people? 0
+    ;; TO DO: si app? -> actualiza la distancia al peligro de las salidas
   ]
-
   ask transitable-edges[
     ifelse flow-counter < 1 [
       set flow-counter flow-counter + flow
     ][
       set flow-counter flow
     ]
-
   ]
-
-
   ask violents [
     if detected > 0 [
       let efct-aux efectivity
@@ -921,20 +859,18 @@ to update-world
       ]
     ]
   ]
-
-
 end
 
 to-report app-recomendations
-  ifelse hidden [
-    ifelse distance (min-one-of violents [distance myself]) > 10 [
-      report 1
-    ][
-      report 0
-    ]
-  ][
-    report 1
-  ]
+  ;; TO DO
+  report 2
+end
+
+to-report secure-room-path
+  report ( [my-shortest-route rooms_routes] of location )
+end
+to-report exit-path
+  report ( [my-shortest-route exits_routes] of location )
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -946,25 +882,19 @@ end
 
 to-report my-shortest-route [#routes]
   let minim (item 0 #routes)
-  foreach #routes [ x ->
-    if length x < length minim[set minim x]
-  ]
+  foreach #routes [ x -> if length x < length minim[set minim x] ]
   report minim
 end
 
 to-report route-distance [#route]
   let dist-aux 0
-  foreach #route [ x ->
-    set dist-aux dist-aux + 1
-  ]
+  foreach #route [ x -> set dist-aux dist-aux + 1 ]
   report dist-aux
 end
 
 to-report secure-route? [#route]
   let sum-aux 0
-  foreach #route [ x ->
-    if ([habitable] of one-of nodes with [id = x]) < 1 [ set sum-aux sum-aux + 1]
-  ]
+  foreach #route [ x -> if ([habitable] of one-of nodes with [id = x]) < 1 [ set sum-aux sum-aux + 1] ]
   report sum-aux
 end
 
@@ -977,21 +907,19 @@ to-report my-least-bad-route
 end
 
 
-
-
-
 ; BREADTH FIRST SEARCH: It returns the shortest path (list of "who" property) between two nodes.
 ; The graph satisfies the triangular property, so the shortest list is the shortest path
 
 ; queue      = A list of unexplored nodes. A list with all nodes (except current node) in the call to the function.
 ; next-nodes = A list with the secuence of nodes to be explored. A list with only origin node in the call to the function;
 ; res        = A list of lists with the diferent routes. An empty list in the call to the function
+; origin     = The start point
 ; target     = The node we want to reach
 
 to-report bfs [#origin #target]
   ; We need a queue list, an ordered list with the nodes to explore (next-nodes) and a list of results (res)
   let current    #origin
-  let queue      remove current (n-values (count nodes) [x -> x] )
+  let queue      remove current (n-values (count nodes) [x -> x])
   let next-nodes (list #origin)
   let res        []      ; A list to modify values
   let rc         res     ; A copy to iterate over it
@@ -1038,10 +966,7 @@ to-report bfs [#origin #target]
     ]
   ]
   report [] ; If this report is reached, probably we set a target node that does not exists in the graph
-
 end
-
-
 
 
 
@@ -1113,7 +1038,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-300.0
+468.0
 1
 1
 NIL
@@ -1128,7 +1053,7 @@ num-violents
 num-violents
 0
 10
-9.0
+1.0
 1
 1
 NIL
@@ -1182,7 +1107,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.1
+0.2
 0.05
 1
 NIL
@@ -1234,7 +1159,7 @@ max-iter
 max-iter
 0
 1000
-585.0
+0.0
 5
 1
 NIL
@@ -1247,7 +1172,7 @@ SWITCH
 199
 shooting?
 shooting?
-0
+1
 1
 -1000
 
@@ -1258,7 +1183,7 @@ SWITCH
 70
 app-info?
 app-info?
-1
+0
 1
 -1000
 
@@ -1288,7 +1213,7 @@ app-percentage
 app-percentage
 0
 100
-50.0
+100.0
 1
 1
 NIL
@@ -1317,10 +1242,10 @@ app-killed + not-app-killed
 11
 
 SLIDER
-162
-240
-305
-273
+161
+278
+304
+311
 mean-speed
 mean-speed
 1
@@ -1334,8 +1259,8 @@ HORIZONTAL
 PLOT
 1059
 14
-1259
-164
+1261
+160
 not alerted people
 tick
 people
@@ -1352,8 +1277,8 @@ PENS
 PLOT
 1060
 186
-1260
-336
+1262
+335
 rescued
 NIL
 NIL
@@ -1388,10 +1313,10 @@ PENS
 "pen-1" 1.0 0 -2674135 true "" "plot not-app-killed"
 
 SLIDER
-162
-281
-306
-314
+161
+320
+305
+353
 max-speed-deviation
 max-speed-deviation
 0
@@ -1464,7 +1389,7 @@ INPUTBOX
 70
 420
 target-node
-1.0
+-1.0
 1
 0
 Number
@@ -1499,6 +1424,21 @@ violents-killed
 0
 1
 11
+
+SLIDER
+162
+238
+307
+271
+not-alerted-speed
+not-alerted-speed
+0
+1
+0.5
+0.05
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
