@@ -12,6 +12,8 @@ globals [
   app-rescued
   not-app-killed
   not-app-rescued
+  app-accident
+  not-app-accident
   total-killed
   total-rescued
   violents-killed
@@ -77,7 +79,7 @@ links-own [
   flow-counter
 ]
 
-people-own [ ;agentes móviles
+people-own [
   app
   attacker-heard
   attacker-sighted
@@ -117,8 +119,10 @@ to setup
   clear-all
   set app-killed 0
   set app-rescued 0
+  set app-accident 0
   set not-app-killed 0
   set not-app-rescued 0
+  set not-app-accident 0
   set violents-killed 0
   set exits []
   set speed mean-speed
@@ -144,7 +148,6 @@ to setup
       set hidden-people 0
       set xcor xcor * 1
       set ycor ycor * 1
-
     ]
   ]
 
@@ -203,6 +206,7 @@ to setup
 
     ifelse random-float 1 < leaders-percentage[
       set leadership (random-float 1) + 0.1
+      set route ([my-shortest-route exits_routes] of location)
       set color yellow
     ][
       set leadership 0
@@ -252,7 +256,7 @@ to go
   set not-alerted count people with [state = "not-alerted"]
 
   ;; STOP conditions
-  if (num-peacefuls = app-killed + app-rescued + not-app-killed + not-app-rescued) or (max-iter > 0 and ticks = max-iter) [stop]
+  if (count peacefuls = 0) or (max-iter > 0 and ticks = max-iter) [stop]
 
   update-world
 
@@ -282,10 +286,10 @@ to go
     ]
     peaceful-intention
     if fear > 0 [set fear fear - 1]
+    casualty?
   ]
   tick
 end
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                                             ;;
@@ -397,7 +401,7 @@ to violent-advance
     ask location [set residents residents - 1]
     set location destination
     ask location [set residents residents + 1]
-    set last-locations (sentence (bf last-locations) location)
+    if not member? location last-locations [set last-locations (lput location last-locations)]
   ][
     ask (link ([who] of location) ([who] of destination) ) [
       if flow-counter >= 1 [
@@ -417,21 +421,11 @@ end
 to attack
   set detected 1
   set color red
-  ask location [set habitable 0]
+  ask location [set habitable 0] ;; este que hace aqui?
   let l location
   if random-float 1 < efectivity [
     if any? people with [location = l and hidden = false and p-type = "peaceful"][
-      ask one-of people with [location = l and hidden = false and p-type = "peaceful"][
-        ifelse app [set app-killed app-killed + 1] [set not-app-killed not-app-killed + 1]
-        ask location [
-          set corpses? corpses? + 0.2
-          set residents residents - 1
-          ask my-links with [sound > 0] [
-            ask other-end [set scream? 0.5 * ([sound] of myself )]
-          ]
-        ]
-        die
-      ]
+      ask one-of people with [location = l and hidden = false and p-type = "peaceful"][ died-agent "attack" ]
     ]
   ]
 end
@@ -447,14 +441,7 @@ to shoot [#visibles]
         ask other-end [set attacker-sound? attacker-sound? + 0.5 * s-aux]
       ]
     ]
-    ask one-of peacefuls with [member? location #visibles][
-      ask location [
-        set corpses? corpses? + 0.2
-        set residents residents - 1
-      ]
-      ifelse app [ set app-killed app-killed + 1 ][ set not-app-killed not-app-killed + 1 ]
-      die
-    ]
+    ask one-of peacefuls with [member? location #visibles][ died-agent "shoot" ]
   ]
 end
 
@@ -506,7 +493,7 @@ to peaceful-believe
     ifelse running-people > 0 or (count violents) = 0[
       set dis-aux 15
     ][
-      let nearest-dangerous-node min-one-of nodes with [habitable < 1] [distance myself]
+      let nearest-dangerous-node min-one-of nodes with [habitable < 1] [distance myself] ;; este = 0
       ifelse nearest-dangerous-node != nobody [set dis-aux distance nearest-dangerous-node][set dis-aux 15]
     ]
 
@@ -539,7 +526,6 @@ to peaceful-desire [#fire-sighted #fire-heard #attacker-sighted  #attacker-heard
   ]
 end
 
-
 to peaceful-intention
   ifelse [ id - (floor id) ] of location < 0.099 and state != "not-alerted" [ ; if the agent has been alerted and has reached an exit, evacuate it
     ifelse app [set app-rescued app-rescued + 1][set not-app-rescued not-app-rescued + 1]
@@ -567,7 +553,6 @@ to peaceful-intention
   ]
 end
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;   STATES FUNCTIONS   ;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -594,7 +579,7 @@ end
 
 to follow-leader
   ifelse any? ([visibles] of location) with [ id - floor id < 0.099 ] [
-    set route ( [my-shortest-route exits_routes] of location )
+    set route ( [route] of leader-sighted )
     follow-route route
   ][
     ifelse leader-sighted != nobody [
@@ -658,7 +643,6 @@ to keep-working
   ]
 end
 
-
 to stop-hidden
   if hidden [
     set hidden false
@@ -712,7 +696,6 @@ to follow-route [#route] ; This function works with the "id" property of the nod
   ]
 end
 
-
 to advance ; Go to next-node
   ifelse distance next-location < 0.6 [ ; The agent has reached next-location
     ask location [set residents residents - 1]
@@ -752,11 +735,10 @@ to advance ; Go to next-node
   ]
 end
 
-
 to search-intuitive-node
   let destinations ([reacheables] of location)
-
   let secure-destinations (destinations with [not any? people-here with [p-type = "violent"]])
+
   if any? secure-destinations [set destinations secure-destinations]
 
   ifelse any? ([visibles] of location) with[ (id - floor id)< 0.099] [ ; The agent has found an exit
@@ -778,6 +760,34 @@ to search-intuitive-node
   face next-location
 end
 
+to casualty?
+  let pos ( floor ([residents] of location) / 5 )
+  if pos > 9 [set pos 9]
+  if random-float 1 < ( item pos ([accident-prob] of location) ) * movility * 0.01 [ ;; 0.01 to adjust de values
+    died-agent "casualty"
+  ]
+end
+
+to died-agent [#cause]
+  ask location [
+    set corpses? corpses? + 0.2
+    set residents residents - 1
+  ]
+  (ifelse
+    #cause = "casualty" [
+      ifelse app [set app-accident app-accident + 1] [set not-app-accident not-app-accident + 1]
+      die
+    ]
+    #cause = "attack"   [
+      ifelse app [set app-killed app-killed + 1] [set not-app-killed not-app-killed + 1]
+      ask location [ ask my-links with [sound > 0] [ask other-end [set scream? 0.5 * ([sound] of myself )]] ]
+      die
+    ]
+    #cause = "shoot"    [
+      ifelse app [set app-killed app-killed + 1] [set not-app-killed not-app-killed + 1]
+      die
+    ])
+end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;   FUZZY FUNCTIONS   ;;;;;;;;;;;;;;;;
@@ -794,7 +804,6 @@ to create-fuzzy-sets
   set in-danger       fuzzy:gaussian-set [0  2 [0 10]]
 end
 
-
 to compute-danger [#dist #risk-level]
 
   ;; COMPUTATION OF DEGREES OF CONSISTENCY BETWEEN FACTS (INPUTS) AND ANTECEDENTS FOR EACH RULE
@@ -808,7 +817,6 @@ to compute-danger [#dist #risk-level]
   let degree-of-consistency-R2b fuzzy:evaluation-of close-to-me #dist
   set degree-of-consistency-R2 (runresult (word "max" " list degree-of-consistency-R2a degree-of-consistency-R2b"))
 end
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                                             ;;
@@ -829,6 +837,8 @@ to update-world
     set scream? 0
     set running-people? 0
     ;; TO DO: si app? -> actualiza la distancia al peligro de las salidas
+    ;; hacer que la aplicacion recomiende esconderse sólo al número de agentes que quepan en el nodo
+    ;; y evacuar al resto de agentes.
   ]
   ask transitable-edges[
     ifelse flow-counter < 1 [
@@ -840,11 +850,9 @@ to update-world
   ask violents [
     if detected > 0 [
       let efct-aux efectivity
-
       ask location [
-        set habitable 1 - efct-aux
+        set habitable 1 - efct-aux ;; aqui la distancia
         set attacker? efct-aux
-
         ask my-links [
           let visib-aux visibility
           let sound-aux sound
@@ -862,7 +870,7 @@ to update-world
 end
 
 to-report app-recomendations
-  ;; TO DO
+  ;; TO DO: la lógica de la app. Mientras haya donde esconderse, recomendar sala, si no, salida más cercana
   report 2
 end
 
@@ -879,7 +887,6 @@ end
 ;;                                                                                             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 to-report my-shortest-route [#routes]
   let minim (item 0 #routes)
   foreach #routes [ x -> if length x < length minim[set minim x] ]
@@ -894,7 +901,7 @@ end
 
 to-report secure-route? [#route]
   let sum-aux 0
-  foreach #route [ x -> if ([habitable] of one-of nodes with [id = x]) < 1 [ set sum-aux sum-aux + 1] ]
+  foreach #route [ x -> if ([habitable] of one-of nodes with [id = x]) < 1 [ set sum-aux sum-aux + 1] ] ;; este = 0
   report sum-aux
 end
 
@@ -983,13 +990,12 @@ end
 
 
 
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-308
-12
-945
-403
+374
+8
+1011
+399
 -1
 -1
 12.33333333333334
@@ -1013,10 +1019,10 @@ ticks
 30.0
 
 BUTTON
-309
-408
-364
-443
+374
+406
+429
+441
 NIL
 setup
 NIL
@@ -1030,40 +1036,40 @@ NIL
 1
 
 SLIDER
-162
-166
-303
-199
+12
+287
+153
+320
 num-peacefuls
 num-peacefuls
 1
 1000
-468.0
+500.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-7
-202
-140
-235
+205
+68
+338
+101
 num-violents
 num-violents
 0
 10
-1.0
+3.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-432
-408
-488
-445
+433
+406
+490
+441
 NIL
 go
 T
@@ -1077,10 +1083,10 @@ NIL
 1
 
 MONITOR
-956
-236
-1054
-281
+1029
+162
+1127
+207
 not-app: Red
 not-app-rescued
 17
@@ -1088,10 +1094,10 @@ not-app-rescued
 11
 
 MONITOR
-957
-410
-1054
-455
+1030
+303
+1127
+348
 NIL
 not-app-killed
 17
@@ -1099,10 +1105,10 @@ not-app-killed
 11
 
 SLIDER
-162
-202
-304
-235
+12
+323
+154
+356
 leaders-percentage
 leaders-percentage
 0.0
@@ -1114,10 +1120,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-956
-188
-1054
-233
+1029
+117
+1127
+162
 app: Blue
 app-rescued
 17
@@ -1125,10 +1131,10 @@ app-rescued
 11
 
 MONITOR
-957
-360
-1054
-405
+1030
+258
+1127
+303
 NIL
 app-killed
 17
@@ -1136,10 +1142,10 @@ app-killed
 11
 
 SLIDER
-7
-242
-140
-275
+205
+108
+338
+141
 attackers-efectivity
 attackers-efectivity
 0
@@ -1151,10 +1157,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-7
-34
-147
-67
+20
+31
+160
+64
 max-iter
 max-iter
 0
@@ -1166,10 +1172,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-17
-166
-128
-199
+215
+32
+326
+65
 shooting?
 shooting?
 1
@@ -1177,10 +1183,10 @@ shooting?
 -1000
 
 SWITCH
-180
-37
-292
-70
+25
+128
+137
+161
 app-info?
 app-info?
 0
@@ -1188,10 +1194,10 @@ app-info?
 -1000
 
 BUTTON
-369
-408
-424
-443
+374
+445
+429
+480
 once
 go
 NIL
@@ -1205,25 +1211,25 @@ NIL
 1
 
 SLIDER
+12
 166
-75
-304
-108
+150
+199
 app-percentage
 app-percentage
 0
 100
-100.0
+50.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-956
-290
-1054
-335
+1029
+206
+1127
+251
 total-rescued
 app-rescued + not-app-rescued
 17
@@ -1231,10 +1237,10 @@ app-rescued + not-app-rescued
 11
 
 MONITOR
-957
-464
-1054
-509
+1030
+348
+1127
+393
 total-killed
 app-killed + not-app-killed
 17
@@ -1242,10 +1248,10 @@ app-killed + not-app-killed
 11
 
 SLIDER
-161
-278
-304
-311
+11
+399
+154
+432
 mean-speed
 mean-speed
 1
@@ -1257,10 +1263,10 @@ NIL
 HORIZONTAL
 
 PLOT
-1059
-14
-1261
-160
+816
+406
+1011
+541
 not alerted people
 tick
 people
@@ -1275,10 +1281,10 @@ PENS
 "not-alerted" 1.0 0 -13345367 true "" "plot (count peacefuls with [state = \"not-alerted\"])\n\n"
 
 PLOT
-1060
-186
-1262
-335
+1128
+117
+1323
+252
 rescued
 NIL
 NIL
@@ -1294,10 +1300,10 @@ PENS
 "pen-1" 1.0 0 -13345367 true "" "plot app-rescued"
 
 PLOT
-1060
-360
-1260
-510
+1128
+258
+1323
+393
 killed
 NIL
 NIL
@@ -1313,10 +1319,10 @@ PENS
 "pen-1" 1.0 0 -2674135 true "" "plot not-app-killed"
 
 SLIDER
-161
-320
-305
-353
+11
+440
+155
+473
 max-speed-deviation
 max-speed-deviation
 0
@@ -1328,40 +1334,40 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-30
-13
-130
-31
+43
+10
+143
+28
 World - params
 12
 0.0
 1
 
 TEXTBOX
-172
-144
-302
-174
+22
+265
+152
+295
 Peacefuls - params
 12
 0.0
 1
 
 TEXTBOX
-23
-144
-136
-174
+222
+10
+336
+33
 Violents - params
 12
 0.0
 1
 
 SLIDER
-6
-282
-140
-315
+205
+148
+339
+181
 attackers-speed
 attackers-speed
 0.1
@@ -1373,10 +1379,10 @@ NIL
 HORIZONTAL
 
 INPUTBOX
-70
-360
-140
-420
+268
+226
+338
+286
 target-agent
 -1.0
 1
@@ -1384,10 +1390,10 @@ target-agent
 Number
 
 INPUTBOX
-2
-360
-70
-420
+200
+226
+268
+286
 target-node
 -1.0
 1
@@ -1395,30 +1401,30 @@ target-node
 Number
 
 TEXTBOX
-196
-15
-296
-33
+42
+106
+142
+124
 App - params
 12
 0.0
 1
 
 TEXTBOX
-14
-328
-138
-364
+213
+194
+337
+230
 Negative values to deactivate targets
 12
 0.0
 1
 
 MONITOR
-952
-16
-1054
-61
+1030
+13
+1127
+58
 violents-killed
 violents-killed
 0
@@ -1426,10 +1432,10 @@ violents-killed
 11
 
 SLIDER
-162
-238
-307
-271
+12
+359
+157
+392
 not-alerted-speed
 not-alerted-speed
 0
@@ -1439,6 +1445,58 @@ not-alerted-speed
 1
 NIL
 HORIZONTAL
+
+PLOT
+1127
+405
+1324
+540
+accidents
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -2674135 true "" "plot not-app-accident"
+"pen-1" 1.0 0 -13345367 true "" "plot app-accident"
+
+MONITOR
+1030
+405
+1127
+450
+app: Blue
+app-accident
+0
+1
+11
+
+MONITOR
+1030
+451
+1127
+496
+not-app: Red
+not-app-accident
+17
+1
+11
+
+MONITOR
+1030
+496
+1127
+541
+accidents
+app-accident + not-app-accident
+0
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
