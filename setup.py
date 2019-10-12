@@ -27,6 +27,7 @@ class graph (object):
         self.calculate_paths(self.secure_rooms, self.paths_to_secure_rooms)
         
         self.make_files('nodes_NL.csv','edges_NL.csv')
+        print("\nFiles created succesfully")
     
 
     def read_nodes(self,nodes_file):
@@ -35,8 +36,7 @@ class graph (object):
             self.header = nodes[0]
             nodes = nodes[1:]
         nodes = [ [float(y.strip())  if len(y.strip()) < 6 else y.strip() for y in x.split(',')]  for x in nodes if len(x)>1]
-        print(nodes)
-        print("\n" , nodes[0][-2] , "\n")
+
         for node in nodes:
             if node[0] - math.floor(node[0]) < 0.099:
                 self.exits.append(node[0])
@@ -129,7 +129,7 @@ class graph (object):
         
         copyfile(self.edges_file, 'edges_NL.csv' )        
         first_line = self.header.strip() + ', reacheables, exits_routes, rooms_routes'
-        print(first_line)
+
         with open(nodes, "w") as fp:
             print(first_line, file = fp)
             for node in self.nodes:
