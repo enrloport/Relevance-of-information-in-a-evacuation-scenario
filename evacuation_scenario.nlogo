@@ -17,6 +17,7 @@ globals [
   total-killed
   total-rescued
   violents-killed
+  not-recomended-nodes
 
   low-risk
   high-risk
@@ -127,6 +128,7 @@ to setup
   set violents-killed 0
   set exits []
   set speed mean-speed
+  set not-recomended-nodes []
 
   create-fuzzy-sets
 
@@ -199,7 +201,6 @@ to setup
     set leader-sighted nobody
     set location one-of nodes with [residents < capacity]
     ask location [set residents residents + 1 ]
-;    set last-locations (list nobody nobody nobody nobody)
     set last-locations []
     set next-location location
     set route []
@@ -230,7 +231,7 @@ to setup
     set p-type "violent"
     set movility attackers-speed
     set location one-of nodes
-    set last-locations (list nobody nobody location location)
+    set last-locations []
     set destination location
     set route []
     set efectivity attackers-efectivity
@@ -360,7 +361,6 @@ to find-target
   ifelse target-agent >= 0 and person t-agent != nobody [
     ifelse aux = [location] of person t-agent [
       ifelse shooting? [shoot (list location) ][attack]
-
       set route []
     ][
       ifelse empty? route [
@@ -518,13 +518,17 @@ to peaceful-desire
   ][
     ; Not App beahaviour
     if not in-secure-room? and percived-risk > 0 [
-      set aux location
-      ifelse any? violents with[ member? location ([reacheables] of aux) ] and ([hidden-places - hidden-people] of location)  > 0  [
-        set state "hidden"
+      ifelse empty? route [
+        set aux location
+        ifelse any? violents with[ member? location ([reacheables] of aux) ] and ([hidden-places - hidden-people] of location)  > 0  [
+          set state "hidden"
+        ][
+          ifelse any? violents with [aux = location] and ([residents] of location) > ( 11 * count (violents with [aux = location]) )
+          [set state "fighting"]
+          [set state "running-away"]
+        ]
       ][
-        ifelse any? violents with [aux = location] and ([residents] of location) > ( 11 * count (violents with [aux = location]) )
-        [set state "fighting"]
-        [set state "running-away"]
+        set state "following-route"
       ]
     ]
   ]
@@ -693,10 +697,20 @@ end
 
 to follow-route [#route] ; This function works with the "id" property of the nodes
   let loc-aux ([id] of location)
-  if not member? loc-aux #route [
-    if any? ([reacheables] of location) with [member? id #route] [set route (fput ([id] of location) #route)]
-  ]
-  if not empty? #route and (member? loc-aux #route) [
+  ifelse not member? loc-aux #route [
+    ifelse any? ([reacheables] of location) with [member? id #route] [
+      let reach-aux one-of ([reacheables] of location) with [member? id #route]
+      let pos-aux (position ([id] of reach-aux) #route)
+      set route (insert-item pos-aux #route loc-aux)
+    ][
+      ifelse location = next-location [
+        search-intuitive-node
+        face next-location
+      ][
+        advance
+      ]
+    ]
+  ][
     ifelse location != next-location [
       advance
     ][
@@ -711,14 +725,11 @@ to follow-route [#route] ; This function works with the "id" property of the nod
   ]
 end
 
-
-
 to advance ; Go to next-node
   ifelse distance next-location < 0.6 [ ; The agent has reached next-location
     ask location [set residents residents - 1]
     set location next-location
     ask location [set residents residents + 1]
-    ;if not member? location last-locations [ set last-locations (lput location last-locations) ]
     ifelse member? location last-locations [
       set last-locations ( lput location (remove location last-locations) )
     ][
@@ -763,7 +774,6 @@ to update-flow
     ]
   ]
 end
-
 
 to search-intuitive-node
   let destinations ([reacheables] of location)
@@ -876,7 +886,7 @@ to update-world
     set bomb-sound? 0
     set scream? 0
     set running-people? 0
-    ;; TO DO: si app? -> actualiza la distancia al peligro de las salidas o que sean los violentos los que
+    ;; TO DO: si app? -> actualiza la distancia al peligro de las salidas, o que sean los violentos los que
     ;; actualicen estos valores (nodos con atributo nearest-danger)
     ;; hacer que la aplicacion recomiende esconderse sólo al número de agentes que quepan en el nodo
     ;; y evacuar al resto de agentes.
@@ -908,6 +918,9 @@ to update-world
       ]
     ]
   ]
+  if any? nodes with [habitable < 1][
+    set not-recomended-nodes (remove-duplicates ( reduce sentence ([ [id] of reacheables] of (nodes with [habitable < 1]) ) ) )
+  ]
 end
 
 to-report app-trigger
@@ -928,8 +941,9 @@ end
 to-report secure-room-path
   report ( [my-shortest-route rooms_routes] of location )
 end
+
 to-report exit-path
-  report ( [my-shortest-route exits_routes] of location )
+  report ( [my-least-bad-route exits_routes] of location )
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -952,7 +966,7 @@ end
 
 to-report secure-route? [#route]
   let sum-aux 0
-  foreach #route [ x -> if ([habitable] of one-of nodes with [id = x]) < 1 [ set sum-aux sum-aux + 1] ] ;; este = 0
+  foreach #route [ x -> if member? x not-recomended-nodes [ set sum-aux sum-aux + 1] ]
   report sum-aux
 end
 
@@ -960,8 +974,8 @@ to-report my-secure-routes
   report filter [ x -> secure-route? x = 0] exits_routes
 end
 
-to-report my-least-bad-route
-  report first ( sort-by [ [route1 route2 ] -> secure-route? route1 < secure-route? route2 ] exits_routes )
+to-report my-least-bad-route [#routes]
+  report first ( sort-by [ [route1 route2 ] -> secure-route? route1 < secure-route? route2 ] #routes )
 end
 
 to-report all-my-signals
@@ -1029,6 +1043,10 @@ to-report bfs [#origin #target]
   ]
   report [] ; If this report is reached, probably we set a target node that does not exists in the graph
 end
+
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 374
@@ -1083,7 +1101,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-404.0
+300.0
 1
 1
 NIL
@@ -1204,7 +1222,7 @@ max-iter
 max-iter
 0
 1000
-495.0
+420.0
 5
 1
 NIL
@@ -1217,7 +1235,7 @@ SWITCH
 65
 shooting?
 shooting?
-0
+1
 1
 -1000
 
