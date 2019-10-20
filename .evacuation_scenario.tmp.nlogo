@@ -468,6 +468,7 @@ to attacker-destination
   ]
 end
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                                             ;;
 ;;****************************************  PEACEFULS  ****************************************;;
@@ -539,7 +540,9 @@ to peaceful-desire
         set state "following-route"
       ]
 
+
     ]
+
   ]
 end
 
@@ -607,6 +610,7 @@ to follow-leader
     ]
   ]
 end
+
 
 to run-away
   stop-hidden
@@ -1109,7 +1113,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-500.0
+492.0
 1
 1
 NIL
