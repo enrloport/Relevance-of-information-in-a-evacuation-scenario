@@ -46,9 +46,9 @@ nodes-own [
   attacker-sound?
   bomb?
   bomb-sound?
-  corpses?
   scream?
   running-people?
+  corpses?         ; If an agent dies in the node, the corpse will lay in the floor for the rest of the simulation
   lock?
   leaders?
   police?
@@ -94,7 +94,6 @@ people-own [
   leader-sighted
   running-people
   percived-risk
-  destination
   efectivity
   detected
   fear
@@ -105,6 +104,7 @@ people-own [
   location
   movility
   next-location
+  destination
   p-type
   route
   state
@@ -241,7 +241,7 @@ to setup
   set violents    turtle-set (people with [p-type = "violent"] )
   set peacefuls   turtle-set (people with [p-type = "peaceful"])
   set leaders     turtle-set (people with [leadership > 0])
-  set not-leaders turtle-set (peacefuls with [leadership = 0])
+  ;set not-leaders turtle-set (peacefuls with [leadership = 0])
 
   set not-alerted-app count people with [state = "not-alerted" and app]
   set not-alerted-not-app count people with [state = "not-alerted" and (not app)]
@@ -938,7 +938,7 @@ to-report app-trigger
   ;; 1) Count people with state running-away or with-leader
   ;; 2) Count people with speed > not-alerted-speed
   ;; 3) Ask for any link with a diference between flow and flow-counter
-  if crowd-running and (count people with [movility > not-alerted-speed]) > 5 [report true]
+  if crowd-running and (count peacefuls with [movility > not-alerted-speed]) >= what-is-a-crowd? [report true]
   report false
 end
 
@@ -1055,6 +1055,17 @@ end
 
 
 
+;;;;;;;;; Comandos para pruebas
+
+;; ask violents [ ask location [ ask my-links with [visibility > 0] [ let dist-aux dist ask other-end [show ( (dist-aux - 1) / 19 ) ] ]  ] ]
+
+
+
+
+;;;;;;;;;
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 374
@@ -1124,7 +1135,7 @@ num-violents
 num-violents
 0
 10
-5.0
+1.0
 1
 1
 NIL
@@ -1171,9 +1182,9 @@ not-app-killed
 
 SLIDER
 18
-385
+409
 162
-418
+442
 leaders-percentage
 leaders-percentage
 0.0
@@ -1314,9 +1325,9 @@ app-killed + not-app-killed
 
 SLIDER
 18
-452
+476
 161
-485
+509
 mean-speed
 mean-speed
 1
@@ -1386,9 +1397,9 @@ PENS
 
 SLIDER
 19
-486
+511
 162
-519
+544
 max-speed-deviation
 max-speed-deviation
 0
@@ -1411,9 +1422,9 @@ WORLD PARAMS
 
 TEXTBOX
 29
-364
+388
 172
-383
+407
 PEACEFULS PARAMS
 12
 0.0
@@ -1450,7 +1461,7 @@ INPUTBOX
 339
 218
 target-agent
-1.0
+-1.0
 1
 0
 Number
@@ -1461,7 +1472,7 @@ INPUTBOX
 267
 218
 target-node
-1.0
+-1.0
 1
 0
 Number
@@ -1499,9 +1510,9 @@ violents-killed
 
 SLIDER
 18
-418
+443
 161
-451
+476
 not-alerted-speed
 not-alerted-speed
 0
@@ -1595,6 +1606,21 @@ crowd-running
 0
 1
 -1000
+
+SLIDER
+24
+333
+162
+367
+what-is-a-crowd?
+what-is-a-crowd?
+1
+20
+5.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
