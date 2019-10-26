@@ -529,7 +529,7 @@ to peaceful-desire
     set state "asking-app"
   ][
     if leadership > 0 and route = [] [set route path_to (min-one-of nodes with [id - floor id < 0.099] [distance myself] ) ]
-    ;; TO DO: Aquí hay que hacer que se priorice el salir de la linea de visión del atacante. Esto debe tener prioridad sobre seguir la ruta
+    ;; TO DO: Priorizar el salir de la linea de visión del atacante.
 
     ; Not App beahaviour
     if not in-secure-room? and percived-risk > 0 [
@@ -966,8 +966,8 @@ end
 GRAPHICS-WINDOW
 360
 9
-800
-164
+1547
+804
 -1
 -1
 11.8
@@ -981,9 +981,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-43
+119
 0
-14
+79
 0
 0
 1
@@ -1085,7 +1085,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-1.0
+0.3
 0.05
 1
 NIL
@@ -1150,7 +1150,7 @@ SWITCH
 65
 shooting?
 shooting?
-1
+0
 1
 -1000
 
@@ -1524,7 +1524,7 @@ INPUTBOX
 540
 466
 nodes-file
-nodes.csv
+nodes2.csv
 1
 0
 String
@@ -1535,7 +1535,7 @@ INPUTBOX
 540
 526
 edges-file
-edges.csv
+edges2.csv
 1
 0
 String
