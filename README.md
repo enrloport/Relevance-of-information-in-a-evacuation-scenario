@@ -1,14 +1,14 @@
 # evacuation
-Multiagent Evacuation Scenario in NetLogo and Python
+Multiagent Evacuation Scenario in NetLogo.
 
 This is a multiagent evacuation simulation for NetLogo.
 
 The first step is to create the nodes and edges files.
-Is very important to respect the structure of this files. And it have to be named nodes.csv and edges.csv
+Is very important to keep the structure of this files. And they have to be named nodes.csv and edges.csv
 
 Netlogo will generate the graph by reading this csv files in the set-up.
 
-Once the graph is created, we can run evacuation_scenario.nlogo in NetLogo.
+Once the graph is created, we can run the simulation.
 
 
 You can find other utilities in the extras folder.
