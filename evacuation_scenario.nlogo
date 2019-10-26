@@ -60,8 +60,6 @@ nodes-own [
   hidden-places
   hidden-people
   residents
-  exits_routes
-  rooms_routes
   reacheables       ; Reacheable neighbors
   visibles          ; Visible neighbors
   nearest-danger    ; Distance to closest danger
@@ -94,8 +92,6 @@ people-own [
   leader-sighted
   running-people
   percived-risk
-  efectivity
-  detected
   fear
   sensibility
   hidden
@@ -104,10 +100,11 @@ people-own [
   location
   movility
   next-location
-  destination
   p-type
   route
   state
+  efectivity
+  detected
 ]
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -132,7 +129,7 @@ to setup
   create-fuzzy-sets
 
   ;; CREATE NODES
-  set file (csv:from-file "nodes_NL.csv" ",")
+  set file (csv:from-file "nodes.csv" ",")
   let cabecera first file
   set file bf file
   foreach file [
@@ -154,7 +151,7 @@ to setup
   ]
 
   ;; CREATE EDGES
-  set file (csv:from-file "edges_NL.csv" ",")
+  set file (csv:from-file "edges.csv" ",")
   set cabecera first file
   set file bf file
   foreach file [
@@ -176,9 +173,16 @@ to setup
   set transitable-edges (link-set links with [transitable > 0] )
 
   ask nodes [
-    let r-aux reacheables
-    set reacheables nodes with[ member? id r-aux ]
+    set reacheables turtle-set ( [other-end] of my-links with [transitable > 0] )
     set visibles turtle-set ( [other-end] of my-links with [visibility > 0] )
+  ]
+
+  nw:set-context nodes (links with [transitable > 0])
+  ask nodes with [(id - floor id) > 0.099] [
+    foreach first ( map [x -> [who] of x] (list nodes with [(id - floor id) < 0.099]) ) [
+      end_node ->
+      show nw:turtles-on-weighted-path-to (node end_node) dist
+    ]
   ]
 
   ;; CREATE PECEFULS
@@ -194,7 +198,7 @@ to setup
     set fire-heard 0
     set bomb-heard 0
     set fear 0
-    set sensibility ( 0.9 + random-float 0.2 ) ; Between 0.9 and 1.1. This parameter will determine the level in which the signals affects to the fear
+    set sensibility ( random-normal 1 0.15 )
     set percived-risk 0
     set movility not-alerted-speed
     set leader-sighted nobody
@@ -208,12 +212,12 @@ to setup
 
     ifelse random-float 1 < leaders-percentage[
       set leadership (random-float 1) + 0.1
-      set route ([my-shortest-route exits_routes] of location)
       set color yellow
     ][
       set leadership 0
       set color white
     ]
+
     move-to location
   ]
 
@@ -231,7 +235,7 @@ to setup
     set movility attackers-speed
     set location one-of nodes
     set last-locations []
-    set destination location
+    set next-location location
     set route []
     set efectivity attackers-efectivity
     move-to location
@@ -241,8 +245,6 @@ to setup
   set violents    turtle-set (people with [p-type = "violent"] )
   set peacefuls   turtle-set (people with [p-type = "peaceful"])
   set leaders     turtle-set (people with [leadership > 0])
-  ;set not-leaders turtle-set (peacefuls with [leadership = 0])
-
   set not-alerted-app count people with [state = "not-alerted" and app]
   set not-alerted-not-app count people with [state = "not-alerted" and (not app)]
 
@@ -264,7 +266,7 @@ to go
 
   update-world
 
-  ; A label for the target node. The target agent will be greater than other agents
+  ; A label "T" for the target node. The target agent will be greater than other agents
   if target-node > -1 [ ask node target-node [set label "T"] ]
   if target-agent > -1 [
     set t-agent (count nodes + target-agent)
@@ -278,7 +280,8 @@ to go
   ask peacefuls [
     let loc-aux location
     ifelse leadership = 0 and any? leaders with [ location = loc-aux and state != "not-alerted"] [
-      set leader-sighted ( max-one-of leaders with [location = loc-aux] [leadership] )
+      if movility = not-alerted-speed [ set movility ( precision (random-normal mean-speed max-speed-deviation) 2 ) ]
+      set leader-sighted ( max-one-of leaders with [location = loc-aux and state != "not-alerted"] [leadership] )
       set percived-risk [percived-risk] of leader-sighted
       set state "with-leader"
     ][
@@ -338,14 +341,14 @@ to be-aggressive
     ifelse any? peacefuls with [ member? location visib-aux ] [
       shoot visib-aux
     ][
-      if location = destination [attacker-destination]
+      if location = next-location [attacker-next-location]
       violent-advance
     ]
   ][
     ifelse any? peacefuls with [location = loc and not hidden][
       attack
     ][
-      if location = destination [attacker-destination]
+      if location = next-location [attacker-next-location]
       violent-advance
     ]
   ]
@@ -361,12 +364,8 @@ to find-target
       ifelse shooting? [shoot (list location) ][attack]
       set route []
     ][
-      ifelse empty? route [
-        set route ( bfs ([who] of loc-aux) ([who] of ([location] of person t-agent)) )
-        follow-route2
-      ][
-        follow-route2
-      ]
+      if empty? route [ set route (path_to ([location] of person t-agent)) ]
+      follow-route2
     ]
   ][
     if target-node >= 0[
@@ -374,32 +373,32 @@ to find-target
         ifelse shooting? [shoot [visibles] of location][attack]
         if [residents] of location = 1 [set target-node -1]
       ][
-        if empty? route [ set route ( bfs ([who] of loc-aux) target-node ) ]
+        if empty? route [ set route ( path_to node target-node ) ]
         follow-route2
       ]
     ]
   ]
 end
 
-to follow-route2 ; This function works with the "who" property of the nodes
-  ifelse location = destination [
-    ifelse [who] of location = last route [
+to follow-route2 ; This function works with the nodes
+  ifelse location = next-location [
+    ifelse location = last route or (not member? location route) [
       set route []
     ][
-      let loc-aux ([who] of location)
+      let loc-aux location
       let pos-aux (position loc-aux route)
-      set destination node ( item (pos-aux + 1) route)
-      face destination
+      set next-location ( item (pos-aux + 1) route)
+      face next-location
     ]
   ][
-    violent-advance
+    ifelse p-type = "violent" [violent-advance][advance]
   ]
 end
 
 to violent-advance
-  ifelse distance destination < 0.5 [ ; The agent has reached next-location
+  ifelse distance next-location < 0.5 [ ; The agent has reached next-location
     ask location [set residents residents - 1]
-    set location destination
+    set location next-location
     ask location [set residents residents + 1]
     ifelse not member? location last-locations [ ; Last visited node will be put in the last position
       set last-locations (lput location last-locations)
@@ -407,12 +406,12 @@ to violent-advance
       set last-locations (lput location (remove location last-locations))
     ]
   ][
-    ask (link ([who] of location) ([who] of destination) ) [
+    ask (link ([who] of location) ([who] of next-location) ) [
       if flow-counter >= 1 [
         ask myself [
-          if [capacity > residents] of destination [
-            face destination
-            let dist-aux distance destination
+          if [capacity > residents] of next-location [
+            face next-location
+            let dist-aux distance next-location
             ifelse movility > dist-aux [fd dist-aux][fd movility]
           ]
         ]
@@ -450,17 +449,17 @@ to shoot [#visibles]
   ]
 end
 
-to attacker-destination
+to attacker-next-location
   let destinations ([reacheables] of location)
   let ll last-locations
   ifelse any? destinations with [not (member? self ll)] [
-    set destination one-of destinations with [not (member? self ll)]
+    set next-location one-of destinations with [not (member? self ll)]
   ][
     foreach last-locations [
       x ->
       ask x [
         if member? x destinations [
-          ask myself [ set destination x ]
+          ask myself [ set next-location x ]
           stop
         ]
       ]
@@ -500,7 +499,7 @@ to peaceful-believe
 
   if percived-signals > 0 [
     let dis-aux 15
-    if movility = not-alerted-speed [ set movility ( speed - (max-speed-deviation) + random-float (2 * max-speed-deviation) ) ]
+    if movility = not-alerted-speed [ set movility ( precision (random-normal mean-speed max-speed-deviation) 2 ) ]
 
     if any? ([visibles] of location) with [all-my-signals > 0] [
       let near-signal max-one-of ([visibles] of location) [all-my-signals]
@@ -520,7 +519,7 @@ to peaceful-desire
   ifelse app-info? and app and app-trigger and route = [] [  ; The app is giving information to the agent.
     set state "asking-app"
   ][
-
+    if leadership > 0 and route = [] [set route path_to (min-one-of nodes with [id - floor id < 0.099] [distance myself] ) ]
     ;; TO DO: Aquí hay que hacer que se priorice el salir de la linea de visión del atacante. Esto debe tener prioridad sobre seguir la ruta
 
     ; Not App beahaviour
@@ -556,7 +555,7 @@ to peaceful-intention
       state = "hidden"          [hide]
       state = "fighting"        [fight]
       state = "asking-app"      [ask-app]
-      state = "following-route" [follow-route route])
+      state = "following-route" [follow-route2]) ; route
 
     if leadership = 0 [
       (ifelse
@@ -597,10 +596,10 @@ end
 to follow-leader
   ifelse leader-sighted != nobody [
     if route != ([route] of leader-sighted)[ set route ([route] of leader-sighted) ] ; The leader is going to share the route with other agents
-    follow-route route
+    follow-route2
   ][
     ifelse route != [] [ ; Maybe the leader is dead, but if he shared the route with me, follow the route
-      follow-route route
+      follow-route2
     ][
       set state "running-away"
       run-away
@@ -613,7 +612,7 @@ to run-away
 
   ; TO DO: Ojo, el líder es temerario, no le importa que en la ruta haya violentos
   ifelse leadership > 0 [
-    follow-route route
+    follow-route2 ; route
   ][
     if location = next-location or [residents] of next-location = [capacity] of next-location [search-intuitive-node]
     advance
@@ -701,34 +700,11 @@ end
 ;;;;;;;;;;;;;;;   ACTION FUNCTIONS  ;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-to follow-route [#route] ; This function works with the "id" property of the nodes
-  let loc-aux ([id] of location)
-  ifelse not member? loc-aux #route [
-    ifelse any? ([reacheables] of location) with [member? id #route] [
-      let reach-aux one-of ([reacheables] of location) with [member? id #route]
-      let pos-aux (position ([id] of reach-aux) #route)
-      set route (insert-item pos-aux #route loc-aux)
-    ][
-      ifelse location = next-location [
-        search-intuitive-node
-        face next-location
-      ][
-        advance
-      ]
-    ]
-  ][
-    ifelse location != next-location [
-      advance
-    ][
-      ifelse [id] of location = last #route [ ; The agent has completed the route
-        set state "hidden"
-      ][
-        let pos-aux (position loc-aux #route)
-        set next-location one-of nodes with [ id = ( item (pos-aux + 1) #route) ]
-        face next-location
-      ]
-    ]
-  ]
+to-report path_to [#dest]
+  let r []
+  ask location [set r (nw:turtles-on-weighted-path-to #dest dist)]
+  report r
+
 end
 
 to advance ; Go to next-node
@@ -791,7 +767,8 @@ to search-intuitive-node
   if any? secure-destinations [set destinations secure-destinations]
 
   ifelse any? ([visibles] of location) with[ (id - floor id)< 0.099] [ ; The agent has sighted an exit
-    follow-route ( [my-shortest-route exits_routes] of location )
+    set route (path_to one-of ([visibles] of location) with[ (id - floor id)< 0.099])
+    follow-route2
   ][
     let ll last-locations
     ifelse any? destinations with[ not (member? self ll)  ] [
@@ -948,11 +925,11 @@ to-report app-recomendations
 end
 
 to-report secure-room-path
-  report ( [my-shortest-route rooms_routes] of location )
+  report path_to ( min-one-of (nodes with [lock? > 0]) [distance myself] )
 end
 
 to-report exit-path
-  report ( [my-least-bad-route exits_routes] of location )
+  report path_to ( min-one-of (nodes with [id - floor id < 0.099]) [distance myself] )
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -961,26 +938,10 @@ end
 ;;                                                                                             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-to-report my-shortest-route [#routes]
-  let minim (item 0 #routes)
-  foreach #routes [ x -> if length x < length minim[set minim x] ]
-  report minim
-end
-
-to-report route-distance [#route]
-  let dist-aux 0
-  foreach #route [ x -> set dist-aux dist-aux + 1 ]
-  report dist-aux
-end
-
 to-report secure-route? [#route]
   let sum-aux 0
-  foreach #route [ x -> if member? x not-recomended-nodes [ set sum-aux sum-aux + 1] ]
+  foreach #route [ x ->  set sum-aux sum-aux + ([habitable] of x) ]
   report sum-aux
-end
-
-to-report my-secure-routes
-  report filter [ x -> secure-route? x = 0] exits_routes
 end
 
 to-report my-least-bad-route [#routes]
@@ -992,80 +953,11 @@ to-report all-my-signals
 end
 
 
-; BREADTH FIRST SEARCH:
-; queue      = A list of unexplored nodes. A list with all nodes (except current node) in the call to the function.
-; next-nodes = A list with the secuence of nodes to be explored. A list with only origin node in the call to the function;
-; res        = A list of lists with the diferent routes. An empty list in the call to the function
-; origin     = The start point
-; target     = The node we want to reach
-
-to-report bfs [#origin #target]
-  ; We need a queue list, an ordered list with the nodes to explore (next-nodes) and a list of results (res)
-  let current    #origin
-  let queue      remove current (n-values (count nodes) [x -> x])
-  let next-nodes (list #origin)
-  let res        []      ; A list to modify values
-  let rc         res     ; A copy to iterate over it
-
-  ; The list of neighbours of the current node, only those that have not been explored yet.
-  ;; TO DO: Ordenar por distancia, más cercanos primero
-  let neighs ( filter [x -> not member? x next-nodes] [[who] of reacheables] of node current )
-
-  ; In the first iteration we have an empty list (res), so we have to populate it with the origin node neighbours'
-  ; If any of this neighbours is the destiny, we are going to return the result
-  foreach neighs [
-    x ->
-    if member? x queue [ set next-nodes (lput x next-nodes) ]
-    ifelse x = #target [report (list current x)][set res lput (list current x) res]
-  ]
-
-  ; Iterator. Go to the next node and explore its neighbours until we reach the target
-  while [not empty? queue]
-  [
-    set current first next-nodes
-    set next-nodes bf next-nodes
-    set queue (remove current queue)
-    set rc res
-
-    ; The list of neighbours of the current node, only those that have not been explored yet.
-    ;; TO DO: Ordenar por distancia, más cercanos primero
-    set neighs ( filter [x -> not member? x next-nodes] [[who] of reacheables] of node current )
-    foreach neighs [ x -> if member? x queue [ set next-nodes (lput x next-nodes) ] ]
-
-    foreach rc [
-      x ->
-      if last x = current [
-        foreach neighs [
-          n ->
-          ifelse n = #target [
-            report (lput n x)
-          ][
-            if member? n queue [
-              let new (lput n x)
-              set res (lput new res)
-            ]
-          ]
-        ]
-        set res (remove x res)
-      ]
-    ]
-  ]
-  report [] ; If this report is reached, probably we set a target node that does not exists in the graph
-end
-
-
-
 ;;;;;;;;; Comandos para pruebas
 
 ;; ask violents [ ask location [ ask my-links with [visibility > 0] [ let dist-aux dist ask other-end [show ( (dist-aux - 1) / 19 ) ] ]  ] ]
 
-
-
-
 ;;;;;;;;;
-
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 374
@@ -1120,7 +1012,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-500.0
+1000.0
 1
 1
 NIL
@@ -1135,7 +1027,7 @@ num-violents
 num-violents
 0
 10
-1.0
+4.0
 1
 1
 NIL
@@ -1189,7 +1081,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.2
+1.0
 0.05
 1
 NIL
@@ -1254,7 +1146,7 @@ SWITCH
 65
 shooting?
 shooting?
-0
+1
 1
 -1000
 
@@ -1404,7 +1296,7 @@ max-speed-deviation
 max-speed-deviation
 0
 0.5
-0.5
+0.15
 0.01
 1
 NIL
@@ -1582,7 +1474,7 @@ SWITCH
 297
 first-blood
 first-blood
-1
+0
 1
 -1000
 
@@ -1611,7 +1503,7 @@ SLIDER
 24
 333
 162
-367
+366
 what-is-a-crowd?
 what-is-a-crowd?
 1
