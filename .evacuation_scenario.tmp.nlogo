@@ -619,7 +619,7 @@ end
 to run-away
   stop-hidden
 
-  ; TO DO: Cambiar la ruta cuando haya violentos
+  ; TO DO: jo, el líder es temerario, no le importa que en la ruta haya violentos
   ifelse leadership > 0 [
     follow-route2 ; route
   ][
