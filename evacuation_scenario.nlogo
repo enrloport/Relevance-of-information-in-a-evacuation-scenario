@@ -1,7 +1,6 @@
 extensions [fuzzy nw csv]
 
 globals [
-  exits
   leaders
   not-leaders
   peacefuls
@@ -121,7 +120,6 @@ to setup
   set not-app-rescued 0
   set not-app-accident 0
   set violents-killed 0
-  set exits []
   set speed mean-speed
   set not-recomended-nodes []
 
@@ -149,7 +147,6 @@ to setup
         [c r] ->
         run (word "set " c " " r)
       ])
-      if (id - floor id) < 0.099 [ set exits (sentence exits (floor id) ) ]
       set color blue
       set habitable 1
       set shape "circle"
@@ -191,7 +188,6 @@ to setup
   ]
 
   nw:set-context nodes (links with [transitable > 0])
-
 
 
   ;; CREATE PECEFULS
@@ -961,13 +957,12 @@ to-report all-my-signals
   report fire? + fire-sound? + attacker? + attacker-sound? + bomb? + bomb-sound? + corpses? + scream? + running-people?
 end
 
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 360
 9
-1547
-804
+887
+195
 -1
 -1
 11.8
@@ -981,9 +976,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-119
+43
 0
-79
+14
 0
 0
 1
@@ -1016,7 +1011,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-752.0
+492.0
 1
 1
 NIL
@@ -1085,7 +1080,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.3
+0.0
 0.05
 1
 NIL
@@ -1150,7 +1145,7 @@ SWITCH
 65
 shooting?
 shooting?
-0
+1
 1
 -1000
 
@@ -1161,7 +1156,7 @@ SWITCH
 206
 app-info?
 app-info?
-0
+1
 1
 -1000
 
@@ -1524,7 +1519,7 @@ INPUTBOX
 540
 466
 nodes-file
-nodes2.csv
+nodes.csv
 1
 0
 String
@@ -1535,7 +1530,7 @@ INPUTBOX
 540
 526
 edges-file
-edges2.csv
+edges.csv
 1
 0
 String
