@@ -233,8 +233,10 @@ to setup
       set leadership 0
       set color white
     ]
+
     move-to location
   ]
+
   if target-agent >= 0 [
     set t-agent (count nodes + target-agent) ; The agent 0 will be created with who = (0 + number of nodes), so we need to adjust this number
     ask person t-agent [set size 2]

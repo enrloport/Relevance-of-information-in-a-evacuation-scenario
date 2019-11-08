@@ -61,15 +61,19 @@ to compute-suitability
 
   ;; COMPUTATION OF DEGREES OF CONSISTENCY BETWEEN FACTS (INPUTS) AND ANTECEDENTS FOR EACH RULE
 
-  ;; Rule 1: IF (House is Inhigh-risk OR Close-to-work)...
+  ;; Rule 1: IF (House is Inhigh-risk OR/AND Close-to-work)...
   let degree-of-consistency-R1a fuzzy:evaluation-of low-risk risk-level
   let degree-of-consistency-R1b fuzzy:evaluation-of far-from-me dist
-  set degree-of-consistency-R1 (runresult (word type-of-or " list degree-of-consistency-R1a degree-of-consistency-R1b"))
+  let type1 0
+  ifelse type-R1 = "OR" [set type1 type-of-or][set type1 type-of-and]
+  set degree-of-consistency-R1 (runresult (word type1" list degree-of-consistency-R1a degree-of-consistency-R1b"))
 
-  ;; Rule 2: IF (House is Expensive OR Far-from-work)...
+  ;; Rule 2: IF (House is Expensive OR/AND Far-from-work)...
   let degree-of-consistency-R2a fuzzy:evaluation-of high-risk risk-level
   let degree-of-consistency-R2b fuzzy:evaluation-of close-to-me dist
-  set degree-of-consistency-R2 (runresult (word type-of-or " list degree-of-consistency-R2a degree-of-consistency-R2b"))
+  let type2 0
+  ifelse type-R2 = "OR" [set type2 type-of-or][set type2 type-of-and]
+  set degree-of-consistency-R2 (runresult (word type2 " list degree-of-consistency-R2a degree-of-consistency-R2b"))
 
 
   ;; COMPUTATION OF RESHAPED CONSEQUENTS FOR EACH RULE
@@ -90,6 +94,7 @@ to do-plots
   clear-all-plots
 
   set-current-plot "Low-risk"
+;  set-current-plot prop1
   draw low-risk risk-level 100
 
   set-current-plot "High-risk"
@@ -171,13 +176,12 @@ end
 ;; Adapted by Enrique José López Ortiz to calculate parameters of fuzzy-sets in evacuation scenario
 ;; email: e.l.o.universidad@gmail.com
 ;;
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-208
-8
-381
-72
+235
+87
+408
+151
 -1
 -1
 27.5
@@ -201,10 +205,10 @@ ticks
 30.0
 
 BUTTON
-259
-411
-339
-446
+283
+317
+363
+352
 compute
 compute-suitability\ndo-plots
 T
@@ -218,10 +222,10 @@ NIL
 1
 
 PLOT
-204
-8
-404
-158
+230
+87
+430
+237
 Low-risk
 p
 NIL
@@ -236,40 +240,40 @@ PENS
 "mine" 1.0 0 -13345367 true "" ""
 
 SLIDER
-74
-379
-241
-413
+95
+281
+262
+314
 risk-level
 risk-level
 0
 100
-37.0
+100.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-74
-412
-241
-446
+95
+321
+262
+354
 dist
 dist
 0
 100
-20.0
+60.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-204
-183
-404
-333
+227
+413
+427
+563
 High-risk
 p
 NIL
@@ -284,10 +288,10 @@ PENS
 "default" 1.0 0 -13345367 true "" ""
 
 PLOT
-606
-183
-806
-333
+671
+411
+871
+561
 Close-to-me
 d
 NIL
@@ -302,10 +306,10 @@ PENS
 "default" 1.0 0 -2674135 true "" ""
 
 PLOT
-605
-10
-805
-160
+672
+87
+872
+237
 Far-from-me
 d
 NIL
@@ -320,70 +324,50 @@ PENS
 "default" 1.0 0 -2674135 true "" ""
 
 TEXTBOX
-27
-58
-55
-78
+60
+150
+76
+170
 IF
 15
 0.0
 1
 
 TEXTBOX
-23
-247
-63
-266
+57
+478
+74
+498
 IF
 15
 0.0
 1
 
 TEXTBOX
-423
-68
-462
-87
-OR
-15
-0.0
-1
-
-TEXTBOX
-420
-242
-465
-261
-OR
-15
-0.0
-1
-
-TEXTBOX
-843
-53
-900
-73
+911
+130
+968
+150
 THEN
 15
 0.0
 1
 
 TEXTBOX
-844
-225
-898
-245
+908
+454
+962
+474
 THEN
 15
 0.0
 1
 
 PLOT
-1068
-8
-1268
-158
+1135
+85
+1335
+235
 Not-in-danger
 s
 NIL
@@ -399,10 +383,10 @@ PENS
 "green" 1.0 0 -10899396 true "" ""
 
 PLOT
-1070
-175
-1270
-325
+1135
+404
+1335
+554
 In-danger
 s
 NIL
@@ -418,100 +402,60 @@ PENS
 "green" 1.0 0 -10899396 true "" ""
 
 CHOOSER
-936
-374
-1074
-419
-type-of-aggregation
-type-of-aggregation
-"max" "prob-or" "sum"
-0
-
-CHOOSER
-1095
-374
-1245
-419
-type-of-defuzzification
-type-of-defuzzification
-"COG" "FOM" "LOM" "MOM" "MeOM"
-0
-
-CHOOSER
-608
-376
-746
-421
+437
+274
+575
+319
 type-of-or
 type-of-or
 "max" "prob-or"
 0
 
 CHOOSER
-608
-420
-746
-465
+437
+328
+575
+373
 type-of-and
 type-of-and
 "min" "product"
 0
 
 CHOOSER
-775
-374
-913
-419
+868
+294
+1006
+339
 reshaping-method
 reshaping-method
 "truncate" "prod"
 0
 
 TEXTBOX
-612
-357
-743
-375
+447
+256
+574
+275
 LOGICAL OPERATORS
 11
 0.0
 1
 
 TEXTBOX
-786
-357
-914
-375
+880
+277
+1008
+295
 RESHAPING METHOD
 11
 0.0
 1
 
-TEXTBOX
-939
-357
-1092
-376
-AGGREGATION METHOD
-11
-0.0
-1
-
-TEXTBOX
-1094
-357
-1267
-376
-DEFUZZIFICATION METHOD
-11
-0.0
-1
-
 BUTTON
-259
-377
-338
-410
+283
+282
+363
+316
 once
 compute-suitability\ndo-plots
 NIL
@@ -525,10 +469,10 @@ NIL
 1
 
 MONITOR
-818
-80
-917
-125
+885
+157
+984
+202
 consistency R1
 degree-of-consistency-R1
 2
@@ -536,10 +480,10 @@ degree-of-consistency-R1
 11
 
 MONITOR
-820
-251
-917
-296
+885
+479
+982
+524
 consistency R2
 degree-of-consistency-R2
 2
@@ -547,25 +491,25 @@ degree-of-consistency-R2
 11
 
 SLIDER
-70
-15
-200
-48
+96
+94
+226
+127
 lr1
 lr1
 0
 100
-0.0
+100.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-70
-49
-200
-82
+96
+128
+226
+161
 lr2
 lr2
 0
@@ -577,10 +521,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-70
-83
-200
-116
+96
+161
+226
+194
 lr3
 lr3
 0
@@ -592,10 +536,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-70
-116
-200
-149
+96
+194
+226
+227
 lr4
 lr4
 0
@@ -607,10 +551,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-68
-188
-200
-221
+91
+418
+223
+451
 hr1
 hr1
 0
@@ -622,10 +566,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-68
-221
-200
-254
+91
+451
+223
+484
 hr2
 hr2
 0
@@ -637,10 +581,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-68
-256
-200
-289
+91
+485
+223
+518
 hr3
 hr3
 0
@@ -652,10 +596,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-68
-289
-200
-322
+91
+520
+223
+553
 hr4
 hr4
 0
@@ -667,10 +611,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-472
-14
-604
-47
+540
+91
+672
+124
 ffm1
 ffm1
 0
@@ -682,10 +626,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-472
-48
-604
-81
+540
+125
+672
+158
 ffm2
 ffm2
 0
@@ -697,10 +641,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-472
-81
-604
-114
+540
+158
+672
+191
 ffm3
 ffm3
 0
@@ -712,10 +656,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-472
-115
-604
-148
+540
+192
+672
+225
 ffm4
 ffm4
 0
@@ -727,10 +671,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-473
-183
-605
-216
+538
+411
+670
+444
 ctm1
 ctm1
 0
@@ -742,10 +686,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-473
-217
-605
-250
+538
+445
+670
+478
 ctm2
 ctm2
 0
@@ -757,10 +701,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-473
-251
-605
-284
+538
+479
+670
+512
 ctm3
 ctm3
 0
@@ -772,10 +716,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-473
-284
-605
-317
+538
+513
+670
+546
 ctm4
 ctm4
 0
@@ -787,124 +731,174 @@ NIL
 HORIZONTAL
 
 SLIDER
-934
+1002
+89
+1135
+122
+nid1
+nid1
+0
+100
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1002
+122
+1135
+155
+nid2
+nid2
+0
+100
+35.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1002
+156
+1135
+189
+nid3
+nid3
+0
+100
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1002
+190
+1135
+223
+nid4
+nid4
+0
+100
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+998
+409
+1132
+442
+id1
+id1
+0
+100
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+998
+443
+1132
+476
+id2
+id2
+0
+100
+20.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+998
+476
+1132
+509
+id3
+id3
+0
+100
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+998
+509
+1132
+542
+id4
+id4
+0
+100
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+435
+154
+528
+199
+type-R1
+type-R1
+"AND" "OR"
+1
+
+CHOOSER
+436
+478
+529
+523
+type-R2
+type-R2
+"AND" "OR"
+0
+
+TEXTBOX
+448
+127
+521
+145
+AND / OR
+14
+0.0
+1
+
+TEXTBOX
+445
+454
+519
+472
+AND / OR
+14
+0.0
+1
+
+TEXTBOX
+226
+27
+351
+42
+param 1
 12
-1067
-45
-nid1
-nid1
-0
-100
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-934
-45
-1067
-78
-nid2
-nid2
-0
-100
-20.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-934
-79
-1067
-112
-nid3
-nid3
-0
-100
 0.0
 1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-934
-113
-1067
-146
-nid4
-nid4
-0
-100
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-934
-180
-1068
-213
-id1
-id1
-0
-100
-0.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-934
-214
-1068
-247
-id2
-id2
-0
-100
-20.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-934
-248
-1068
-281
-id3
-id3
-0
-100
-0.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-934
-281
-1068
-314
-id4
-id4
-0
-100
-100.0
-1
-1
-NIL
-HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
