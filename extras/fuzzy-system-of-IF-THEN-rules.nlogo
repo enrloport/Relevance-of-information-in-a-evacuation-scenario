@@ -6,13 +6,13 @@ extensions [fuzzy]
 
 globals [
   r1-param1
-  r2-param1
-
-  r2-param2
   r1-param2
 
+  r2-param1
+  r2-param2
+
   r1-res
-  in-danger
+  r2-res
 
   degree-of-consistency-R1
   degree-of-consistency-R2
@@ -49,7 +49,7 @@ to create-fuzzy-sets
   set r1-res    fuzzy:gaussian-set nid
 
   let id (list res2_max res2_dev (list res2_min_X res2_max_X))
-  set in-danger     fuzzy:gaussian-set id
+  set r2-res     fuzzy:gaussian-set id
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -83,7 +83,7 @@ to compute-suitability
   set reshaped-consequent-R1 (runresult (word "fuzzy:" reshaping-method " r1-res degree-of-consistency-R1"))
 
   ;; Rule 2: ... THEN Suitability is Low.
-  set reshaped-consequent-R2 (runresult (word "fuzzy:" reshaping-method " in-danger degree-of-consistency-R2"))
+  set reshaped-consequent-R2 (runresult (word "fuzzy:" reshaping-method " r2-res degree-of-consistency-R2"))
 
 end
 
@@ -114,7 +114,7 @@ to do-plots
     fuzzy:plot reshaped-consequent-R1
 
   set-current-plot "R2_result"
-    fuzzy:plot in-danger
+    fuzzy:plot r2-res
     set-current-plot-pen "green"
     fuzzy:plot reshaped-consequent-R2
 
@@ -248,7 +248,7 @@ Param_1_level
 Param_1_level
 0
 100
-90.0
+15.0
 1
 1
 NIL
@@ -895,7 +895,7 @@ TEXTBOX
 40
 435
 60
-Density
+Param 1: Density
 16
 0.0
 1
@@ -905,7 +905,7 @@ TEXTBOX
 42
 879
 62
-Speed
+Param 2: Speed
 16
 0.0
 1
