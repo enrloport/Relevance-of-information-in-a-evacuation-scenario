@@ -5,12 +5,13 @@ extensions [fuzzy]
 ;;;;;;;;;;;;;;;;;
 
 globals [
-  low-risk
-  high-risk
+  r1-param1
+  r2-param1
 
-  close-to-me
-  far-from-me
-  not-in-danger
+  r2-param2
+  r1-param2
+
+  r1-res
   in-danger
 
   degree-of-consistency-R1
@@ -32,22 +33,22 @@ to startup
 end
 
 to create-fuzzy-sets
-  let lr (list lr1 lr2 (list lr3 lr4))
-  set low-risk          fuzzy:gaussian-set lr
+  let lr (list r1p1_max r1p1_dev (list r1p1_min_X r1p1_max_X))
+  set r1-param1          fuzzy:gaussian-set lr
 
-  let hr (list hr1 hr2 (list hr3 hr4))
-  set high-risk         fuzzy:gaussian-set hr
+  let hr (list r2p1_max r2p1_dev (list r2p1_min_X r2p1_max_X))
+  set r2-param1         fuzzy:gaussian-set hr
 
-  let ctm (list ctm1 ctm2 (list ctm3 ctm4))
-  set close-to-me       fuzzy:gaussian-set ctm
+  let ctm (list r2p2_max r2p2_dev (list r2p2_min_X r2p2_max_X))
+  set r2-param2       fuzzy:gaussian-set ctm
 
-  let ffm (list ffm1 ffm2 (list ffm3 ffm4))
-  set far-from-me       fuzzy:gaussian-set ffm
+  let ffm (list r1p2_max r1p2_dev (list r1p2_min_X r1p2_max_X))
+  set r1-param2       fuzzy:gaussian-set ffm
 
-  let nid (list nid1 nid2 (list nid3 nid4))
-  set not-in-danger    fuzzy:gaussian-set nid
+  let nid (list res1_max res1_dev (list res1_min_X res1_max_X))
+  set r1-res    fuzzy:gaussian-set nid
 
-  let id (list id1 id2 (list id3 id4))
+  let id (list res2_max res2_dev (list res2_min_X res2_max_X))
   set in-danger     fuzzy:gaussian-set id
 end
 
@@ -61,16 +62,16 @@ to compute-suitability
 
   ;; COMPUTATION OF DEGREES OF CONSISTENCY BETWEEN FACTS (INPUTS) AND ANTECEDENTS FOR EACH RULE
 
-  ;; Rule 1: IF (House is Inhigh-risk OR/AND Close-to-work)...
-  let degree-of-consistency-R1a fuzzy:evaluation-of low-risk risk-level
-  let degree-of-consistency-R1b fuzzy:evaluation-of far-from-me dist
+  ;; Rule 1: IF (House is Inr2-param1 OR/AND Close-to-work)...
+  let degree-of-consistency-R1a fuzzy:evaluation-of r1-param1 Param_1_level
+  let degree-of-consistency-R1b fuzzy:evaluation-of r1-param2 Param_2_level
   let type1 0
   ifelse type-R1 = "OR" [set type1 type-of-or][set type1 type-of-and]
   set degree-of-consistency-R1 (runresult (word type1" list degree-of-consistency-R1a degree-of-consistency-R1b"))
 
   ;; Rule 2: IF (House is Expensive OR/AND Far-from-work)...
-  let degree-of-consistency-R2a fuzzy:evaluation-of high-risk risk-level
-  let degree-of-consistency-R2b fuzzy:evaluation-of close-to-me dist
+  let degree-of-consistency-R2a fuzzy:evaluation-of r2-param1 Param_1_level
+  let degree-of-consistency-R2b fuzzy:evaluation-of r2-param2 Param_2_level
   let type2 0
   ifelse type-R2 = "OR" [set type2 type-of-or][set type2 type-of-and]
   set degree-of-consistency-R2 (runresult (word type2 " list degree-of-consistency-R2a degree-of-consistency-R2b"))
@@ -79,7 +80,7 @@ to compute-suitability
   ;; COMPUTATION OF RESHAPED CONSEQUENTS FOR EACH RULE
 
   ;; Rule 1: ... THEN Suitability is Good.
-  set reshaped-consequent-R1 (runresult (word "fuzzy:" reshaping-method " not-in-danger degree-of-consistency-R1"))
+  set reshaped-consequent-R1 (runresult (word "fuzzy:" reshaping-method " r1-res degree-of-consistency-R1"))
 
   ;; Rule 2: ... THEN Suitability is Low.
   set reshaped-consequent-R2 (runresult (word "fuzzy:" reshaping-method " in-danger degree-of-consistency-R2"))
@@ -93,27 +94,26 @@ end
 to do-plots
   clear-all-plots
 
-  set-current-plot "Low-risk"
-;  set-current-plot prop1
-  draw low-risk risk-level 100
+  set-current-plot "R1_Param_1"
+  draw r1-param1 Param_1_level 100
 
-  set-current-plot "High-risk"
-  draw high-risk risk-level 100
-
-
-  set-current-plot "Close-to-me"
-  draw close-to-me dist 100
-
-  set-current-plot "Far-from-me"
-  draw far-from-me dist 100
+  set-current-plot "R2_Param_1"
+  draw r2-param1 Param_1_level 100
 
 
-  set-current-plot "Not-in-danger"
-    fuzzy:plot not-in-danger
+  set-current-plot "R2_Param_2"
+  draw r2-param2 Param_2_level 100
+
+  set-current-plot "R1_Param_2"
+  draw r1-param2 Param_2_level 100
+
+
+  set-current-plot "R1_Result"
+    fuzzy:plot r1-res
     set-current-plot-pen "green"
     fuzzy:plot reshaped-consequent-R1
 
-  set-current-plot "In-danger"
+  set-current-plot "R2_result"
     fuzzy:plot in-danger
     set-current-plot-pen "green"
     fuzzy:plot reshaped-consequent-R2
@@ -154,12 +154,12 @@ end
 ;;
 ;; Copyright (C) 2015 Luis R. Izquierdo, Segismundo S. Izquierdo & Doina Olaru
 ;;
-;; This program is free software: you can redistribute it and/or modify
+;; This program is free software: you can reParam_2_levelribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
 ;;
-;; This program is distributed in the hope that it will be useful,
+;; This program is Param_2_levelributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
@@ -226,7 +226,7 @@ PLOT
 87
 430
 237
-Low-risk
+R1_Param_1
 p
 NIL
 0.0
@@ -244,11 +244,11 @@ SLIDER
 281
 262
 314
-risk-level
-risk-level
+Param_1_level
+Param_1_level
 0
 100
-100.0
+90.0
 1
 1
 NIL
@@ -259,11 +259,11 @@ SLIDER
 321
 262
 354
-dist
-dist
+Param_2_level
+Param_2_level
 0
 100
-60.0
+67.0
 1
 1
 NIL
@@ -274,7 +274,7 @@ PLOT
 413
 427
 563
-High-risk
+R2_Param_1
 p
 NIL
 0.0
@@ -292,7 +292,7 @@ PLOT
 411
 871
 561
-Close-to-me
+R2_Param_2
 d
 NIL
 0.0
@@ -310,7 +310,7 @@ PLOT
 87
 872
 237
-Far-from-me
+R1_Param_2
 d
 NIL
 0.0
@@ -368,7 +368,7 @@ PLOT
 85
 1335
 235
-Not-in-danger
+R1_Result
 s
 NIL
 0.0
@@ -387,7 +387,7 @@ PLOT
 404
 1335
 554
-In-danger
+R2_Result
 s
 NIL
 0.0
@@ -495,8 +495,8 @@ SLIDER
 94
 226
 127
-lr1
-lr1
+r1p1_max
+r1p1_max
 0
 100
 100.0
@@ -510,11 +510,11 @@ SLIDER
 128
 226
 161
-lr2
-lr2
+r1p1_dev
+r1p1_dev
 0
 100
-30.0
+12.0
 1
 1
 NIL
@@ -525,8 +525,8 @@ SLIDER
 161
 226
 194
-lr3
-lr3
+r1p1_min_X
+r1p1_min_X
 0
 100
 0.0
@@ -540,8 +540,8 @@ SLIDER
 194
 226
 227
-lr4
-lr4
+r1p1_max_X
+r1p1_max_X
 0
 100
 100.0
@@ -555,11 +555,11 @@ SLIDER
 418
 223
 451
-hr1
-hr1
+r2p1_max
+r2p1_max
 0
 100
-100.0
+0.0
 1
 1
 NIL
@@ -570,8 +570,8 @@ SLIDER
 451
 223
 484
-hr2
-hr2
+r2p1_dev
+r2p1_dev
 0
 100
 30.0
@@ -585,8 +585,8 @@ SLIDER
 485
 223
 518
-hr3
-hr3
+r2p1_min_X
+r2p1_min_X
 0
 100
 0.0
@@ -600,8 +600,8 @@ SLIDER
 520
 223
 553
-hr4
-hr4
+r2p1_max_X
+r2p1_max_X
 0
 100
 100.0
@@ -615,8 +615,8 @@ SLIDER
 91
 672
 124
-ffm1
-ffm1
+r1p2_max
+r1p2_max
 0
 100
 100.0
@@ -630,11 +630,11 @@ SLIDER
 125
 672
 158
-ffm2
-ffm2
+r1p2_dev
+r1p2_dev
 0
 100
-30.0
+35.0
 1
 1
 NIL
@@ -645,8 +645,8 @@ SLIDER
 158
 672
 191
-ffm3
-ffm3
+r1p2_min_X
+r1p2_min_X
 0
 100
 0.0
@@ -660,8 +660,8 @@ SLIDER
 192
 672
 225
-ffm4
-ffm4
+r1p2_max_X
+r1p2_max_X
 0
 100
 100.0
@@ -675,8 +675,8 @@ SLIDER
 411
 670
 444
-ctm1
-ctm1
+r2p2_max
+r2p2_max
 0
 100
 0.0
@@ -690,8 +690,8 @@ SLIDER
 445
 670
 478
-ctm2
-ctm2
+r2p2_dev
+r2p2_dev
 0
 100
 15.0
@@ -705,8 +705,8 @@ SLIDER
 479
 670
 512
-ctm3
-ctm3
+r2p2_min_X
+r2p2_min_X
 0
 100
 0.0
@@ -720,8 +720,8 @@ SLIDER
 513
 670
 546
-ctm4
-ctm4
+r2p2_max_X
+r2p2_max_X
 0
 100
 100.0
@@ -735,8 +735,8 @@ SLIDER
 89
 1135
 122
-nid1
-nid1
+res1_max
+res1_max
 0
 100
 100.0
@@ -750,11 +750,11 @@ SLIDER
 122
 1135
 155
-nid2
-nid2
+res1_dev
+res1_dev
 0
 100
-35.0
+20.0
 1
 1
 NIL
@@ -765,8 +765,8 @@ SLIDER
 156
 1135
 189
-nid3
-nid3
+res1_min_X
+res1_min_X
 0
 100
 0.0
@@ -780,8 +780,8 @@ SLIDER
 190
 1135
 223
-nid4
-nid4
+res1_max_X
+res1_max_X
 0
 100
 100.0
@@ -795,8 +795,8 @@ SLIDER
 409
 1132
 442
-id1
-id1
+res2_max
+res2_max
 0
 100
 0.0
@@ -810,8 +810,8 @@ SLIDER
 443
 1132
 476
-id2
-id2
+res2_dev
+res2_dev
 0
 100
 20.0
@@ -825,8 +825,8 @@ SLIDER
 476
 1132
 509
-id3
-id3
+res2_min_X
+res2_min_X
 0
 100
 0.0
@@ -840,8 +840,8 @@ SLIDER
 509
 1132
 542
-id4
-id4
+res2_max_X
+res2_max_X
 0
 100
 100.0
@@ -858,7 +858,7 @@ CHOOSER
 type-R1
 type-R1
 "AND" "OR"
-1
+0
 
 CHOOSER
 436
@@ -868,7 +868,7 @@ CHOOSER
 type-R2
 type-R2
 "AND" "OR"
-0
+1
 
 TEXTBOX
 448
@@ -891,12 +891,22 @@ AND / OR
 1
 
 TEXTBOX
-226
-27
-351
+235
+40
+435
+60
+Density
+16
+0.0
+1
+
+TEXTBOX
+678
 42
-param 1
-12
+879
+62
+Speed
+16
 0.0
 1
 
