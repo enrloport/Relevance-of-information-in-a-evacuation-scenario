@@ -3,19 +3,20 @@ extensions [fuzzy nw csv]
 globals [
   exit-nodes
   leaders
-  not-leaders
   peacefuls
   violents
   app-killed
   app-rescued
   not-app-killed
   not-app-rescued
+  total-with-app
+  total-without-app
+
   app-accident
   not-app-accident
   total-killed
   total-rescued
   violents-killed
-  not-recomended-nodes
 
   low-risk
   high-risk
@@ -42,7 +43,6 @@ globals [
 
   t-agent
   transitable-edges
-  speed
   not-alerted-app
   not-alerted-not-app
 ]
@@ -59,7 +59,7 @@ nodes-own [
   bomb-sound?
   scream?
   running-people?
-  corpses?         ; If an agent dies in the node, the corpse will lay in the floor for the rest of the simulation
+  corpses?          ; If an agent dies in the node, the corpse will lay in the floor for the rest of the simulation
   lock?
   leaders?
   police?
@@ -110,11 +110,14 @@ people-own [
   leadership
   last-locations
   location
-  movility
+  base-speed
+  speed
+  max-speed
   next-location
   p-type
   route
   state
+  p-timer
   efectivity
   detected
 ]
@@ -126,7 +129,10 @@ people-own [
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to setup
+
   clear-all
+  create-fuzzy-sets
+
   set app-killed           0
   set app-rescued          0
   set app-accident         0
@@ -134,17 +140,13 @@ to setup
   set not-app-rescued      0
   set not-app-accident     0
   set violents-killed      0
-  set speed                mean-speed
-  set not-recomended-nodes []
 
-  create-fuzzy-sets
+  let max-x                0
+  let max-y                0
+  let file                 (csv:from-file nodes-file ",")
+  let cabecera             first file
+  set file                 bf file
 
-  let file (csv:from-file nodes-file ",")
-  let cabecera first file
-  set file bf file
-
-  let max-x 0
-  let max-y 0
   foreach file [
     row ->
       if (item 1 row) > max-x [set max-x (item 1 row)]
@@ -196,6 +198,7 @@ to setup
   ask nodes [
     set reacheables turtle-set ( [other-end] of my-links with [transitable > 0] )
     set visibles    turtle-set ( [other-end] of my-links with [visibility  > 0] )
+
   ]
 
   nw:set-context nodes (links with [transitable > 0])
@@ -203,26 +206,28 @@ to setup
 
   ;; CREATE PECEFULS
   create-people num-peacefuls [
-    set shape            "person"
-    set p-type           "peaceful"
-    set state            "not-alerted"
-    set hidden           false
-    set attacker-sighted 0
-    set attacker-heard   0
-    set fire-sighted     0
-    set fire-heard       0
-    set bomb-sighted     0
-    set bomb-heard       0
-    set fear             0
-    set percived-risk    0
-    set in-panic         0
-    set movility         not-alerted-speed
-    set leader-sighted   nobody
-    set route            []
-    set location         one-of nodes with [residents < capacity]
-    set last-locations   (list location)
-    set next-location    location
-    set sensibility      floor( ( random-normal 0.5 0.2 ) * 100 )
+    set shape             "person"
+    set p-type            "peaceful"
+    set state             "not-alerted"
+    set hidden            false
+    set attacker-sighted  0
+    set attacker-heard    0
+    set fire-sighted      0
+    set fire-heard        0
+    set bomb-sighted      0
+    set bomb-heard        0
+    set fear              0
+    set percived-risk     0
+    set in-panic          0
+    set p-timer             0
+    set base-speed        not-alerted-speed
+    set speed             base-speed
+    set leader-sighted    nobody
+    set route             []
+    set location          one-of nodes with [residents < capacity]
+    set last-locations    (list location)
+    set next-location     location
+    set sensibility       floor( ( random-normal 0.5 0.2 ) * 100 )
     if sensibility > 100 [set sensibility 100]
 
     ask location [set residents residents + 1 ]
@@ -230,12 +235,12 @@ to setup
     ifelse random 100 < app-percentage [ set app true ][ set app false ]
 
     ifelse random-float 1 < leaders-percentage[
-      set leadership (random-float 1) + 0.1
-      set route path_to (min-one-of nodes with [id - floor id < 0.099] [distance myself] )
-      set color yellow
+      set leadership     (random-float 1) + 0.1
+      set route path_to  (min-one-of nodes with [id - floor id < 0.099] [distance myself] )
+      set color          yellow
     ][
-      set leadership 0
-      set color white
+      set leadership     0
+      set color          white
     ]
     move-to location
   ]
@@ -246,16 +251,16 @@ to setup
 
   ;; CREATE VIOLENTS
   create-people num-violents [
-    set shape          "person"
-    set p-type         "violent"
-    set movility       attackers-speed
-    set location       one-of nodes
-    set next-location  location
-    set detected       0
-    set color          17
-    set route          []
-    set last-locations []
-    set efectivity     attackers-efectivity
+    set shape             "person"
+    set p-type            "violent"
+    set speed             attackers-speed
+    set location          one-of nodes
+    set next-location     location
+    set detected          0
+    set color             17
+    set route             []
+    set last-locations    []
+    set efectivity        attackers-efectivity
     move-to location
   ]
 
@@ -264,8 +269,12 @@ to setup
   set violents            turtle-set (people with [p-type = "violent"] )
   set peacefuls           turtle-set (people with [p-type = "peaceful"])
   set leaders             turtle-set (people with [leadership > 0])
-  set not-alerted-app     count people with [state = "not-alerted" and app]
-  set not-alerted-not-app count people with [state = "not-alerted" and (not app)]
+
+  set total-with-app      count peacefuls with [app]
+  set total-without-app   count peacefuls with [not app]
+
+  set not-alerted-app     total-with-app
+  set not-alerted-not-app total-without-app
 
   reset-ticks
 end
@@ -277,8 +286,8 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to go
-  set not-alerted-app count people with [state = "not-alerted" and app]
-  set not-alerted-not-app count people with [state = "not-alerted" and (not app)]
+  set not-alerted-app       count people with [state = "not-alerted" and app]
+  set not-alerted-not-app   count people with [state = "not-alerted" and not app]
 
   ;; STOP conditions
   if (count peacefuls = 0) or (max-iter > 0 and ticks = max-iter) [stop]
@@ -286,7 +295,7 @@ to go
   update-world
 
   ; A label "T" for the target node. The target agent will be greater than other agents
-  if target-node > -1 [ ask node target-node [set label "T"] ]
+  if target-node  > -1 [ ask node target-node [set label "who"] ]
   if target-agent > -1 [
     set t-agent (count nodes + target-agent)
     ifelse person t-agent != nobody [ ask person t-agent [set size 2] ][ set target-agent -1 ]
@@ -298,19 +307,13 @@ to go
   ]
   ask peacefuls [
     exit-reached?
-    let loc-aux location
-    ifelse leadership = 0 and any? leaders with [ location = loc-aux and state != "not-alerted"] [
-      if movility = not-alerted-speed [ set movility ( precision (random-normal mean-speed max-speed-deviation) 2 ) ]
-      set leader-sighted ( max-one-of leaders with [location = loc-aux and state != "not-alerted"] [leadership] )
-      set percived-risk [percived-risk] of leader-sighted
-      ifelse congested-path? [set state "avoiding-crowd"][set state "with-leader"]
-    ][
-      peaceful-believe
-      peaceful-desire
-    ]
-    peaceful-intention
-    if fear > 0 [set fear fear - 1]
     casualty?
+
+    peaceful-believe
+    peaceful-desire
+    peaceful-intention
+
+    if fear > 0 [set fear fear - 1]
   ]
   tick
 end
@@ -385,22 +388,24 @@ to find-target
       set route []
     ][
       if empty? route [ set route (path_to ([location] of person t-agent)) ]
-      follow-route2
+      follow-route
     ]
   ][
     if target-node >= 0[
       ifelse [who] of location = target-node [
         ifelse shooting? [shoot [visibles] of location][attack]
-        if [residents] of location = 1 [set target-node -1]
+        set target-node -1
       ][
         if empty? route [ set route ( path_to node target-node ) ]
-        follow-route2
+        follow-route
       ]
     ]
   ]
+
 end
 
-to follow-route2 ; This function works with the nodes
+
+to follow-route
   ifelse location = next-location [
     ifelse (not member? location route) or location = last route  [
       set route []
@@ -416,7 +421,8 @@ to follow-route2 ; This function works with the nodes
 end
 
 to violent-advance
-  ifelse distance next-location < 0.5 [ ; The agent has reached next-location
+  ifelse distance next-location < distance location [ ; The agent has reached next-location
+
 ;    ask location [set residents residents - 1]
     set location next-location
 ;    ask location [set residents residents + 1]
@@ -432,7 +438,7 @@ to violent-advance
           if [capacity > residents] of next-location [
             face next-location
             let dist-aux distance next-location
-            ifelse movility > dist-aux [fd dist-aux][fd movility]
+            ifelse speed > dist-aux [fd dist-aux][fd speed]
           ]
         ]
         set flow-counter flow-counter - 1
@@ -454,7 +460,8 @@ to attack
 end
 
 to shoot [#visibles]
-  if any? peacefuls with [member? location #visibles][
+  let all-reacheables ( turtle-set location ([reacheables] of location) )
+  if any? peacefuls with [member? location all-reacheables][
     set detected 1
     set color red
     ask location [
@@ -503,48 +510,58 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to peaceful-believe
-  let percived-signals 0
-  ifelse app-info? and app and app-trigger [
-    set percived-signals 1
+  ifelse any-leader? [
+    leader-influence
   ][
-    update-signals
-    set percived-signals (attacker-sighted + fire-sighted + bomb-sighted + attacker-heard
-      + fire-heard + bomb-heard + scream-heard + corpse-sighted + running-people)
-    if percived-signals > 1 [set percived-signals 1]
+
+    let percived-signals 0
+    ifelse app-info? and app and app-trigger [
+      set percived-signals 1
+    ][
+      update-signals
+      set percived-signals (attacker-sighted + fire-sighted + bomb-sighted + attacker-heard
+        + fire-heard + bomb-heard + scream-heard + corpse-sighted + running-people)
+      if percived-signals > 1 [set percived-signals 1]
+    ]
+
+    if percived-signals > 0 [
+      if fear < 100 [
+        set fear (fear + 1 + number-of-signals)
+        if fear > 100 [set fear 100]
+      ]
+      compute-panic fear sensibility
+      set in-panic degree-of-consistency-R3
+
+      let dis-aux 15
+
+      if any? ([visibles] of location) with [all-my-signals > 0] [
+        let near-signal max-one-of ([visibles] of location) [all-my-signals]
+        set dis-aux ( [dist] of ( link ([who] of location) ([who] of near-signal) ) )
+      ]
+
+      compute-danger (dis-aux) (percived-signals * 100)
+      if degree-of-consistency-R2 > degree-of-consistency-R1 and degree-of-consistency-R2 > percived-risk[
+        set percived-risk degree-of-consistency-R2
+        if speed = not-alerted-speed [
+          set base-speed ( precision ((random-normal mean-speed max-speed-deviation) / 2) 2 )
+          set speed base-speed
+        ]
+      ]
+    ]
+
   ]
 
-  if percived-signals > 0 [
-    if fear < 100 [
-      set fear (fear + 1 + number-of-signals)
-      if fear > 100 [set fear 100]
-    ]
-    compute-panic fear sensibility
-    set in-panic degree-of-consistency-R3
-
-    let dis-aux 15
-    if movility = not-alerted-speed [ set movility ( precision (random-normal mean-speed max-speed-deviation) 2 ) ]
-
-    if any? ([visibles] of location) with [all-my-signals > 0] [
-      let near-signal max-one-of ([visibles] of location) [all-my-signals]
-      set dis-aux ( [dist] of ( link ([who] of location) ([who] of near-signal) ) )
-    ]
-
-    compute-danger (dis-aux) (percived-signals * 100)
-    if degree-of-consistency-R2 > degree-of-consistency-R1 and degree-of-consistency-R2 > percived-risk[
-      set percived-risk degree-of-consistency-R2
-    ]
-  ]
 end
 
 to peaceful-desire
   if not in-secure-room? and percived-risk > 0 [
     (ifelse
       in-panic > 0.5   [set state "in-panic"]
-      must-I-fight?    [set state "fighting"]
+      any-violent?     [set state "avoiding-violent"]
       congested-path?  [set state "avoiding-crowd"]
       secure-exit?     [set state "reaching-exit"]
       must-I-hide?     [set state "hidden"]
-      any-violent?     [set state "avoiding-violent"]
+      must-I-fight?    [set state "fighting"]
       app-pack?        [set state "asking-app"]
       not empty? route [set state "following-route"]
       [set state "running-away"])
@@ -552,6 +569,7 @@ to peaceful-desire
 end
 
 to peaceful-intention
+  set speed base-speed
   (ifelse
     state = "avoiding-violent"[avoid-violent]
     state = "avoiding-crowd"  [avoid-crowd]
@@ -563,7 +581,7 @@ to peaceful-intention
     state = "hidden"          [hide]
     state = "fighting"        [fight]
     state = "asking-app"      [ask-app]
-    state = "following-route" [follow-route2])
+    state = "following-route" [follow-route])
 
   (ifelse
     state = "avoiding-violent"[set color brown]
@@ -592,30 +610,63 @@ to avoid-crowd
 end
 
 to go-to-exit
-  if route = [] or last route != one-of ([visibles] of location) with [id - floor id < 0.099] [
+  if route = [] or last route != one-of ([visibles] of location) with [member? (node who) exit-nodes] [
     set route (path_to one-of ([visibles] of location) with [id - floor id < 0.099])
     face (item 1 route)
   ]
-  follow-route2
+  follow-route
 end
 
 to avoid-violent
-  if any? ([visibles] of location) with [id - floor id < 0.099] [
-    set route (path_to ( one-of  ([visibles] of location) with [id - floor id < 0.099] ))
-    face (item 1 route)
-  ]
-  if route = [] or not-secure-route route [
-    ifelse leadership > 0 [
-      set route (path_to max-one-of exit-nodes [distance myself] )
-    ][
-      set route (path_to max-one-of ([visibles] of location) [nearest-danger])
-    ]
-    face (item 1 route)
-  ]
-  follow-route2
+  carefully [
+    let v-aux min-one-of violents [distance myself]
+    let n-aux [location] of v-aux
+    set speed ( base-speed + ( fuzzy:evaluation-of close-to-me (distance v-aux) ) )
 
-
+    (ifelse
+      [attacker?] of location = 1 [
+        if route = [] [set route path_to one-of exit-nodes]
+        follow-route
+      ]
+      [attacker?] of next-location = 1 [
+        set next-location location
+        face next-location
+        advance
+      ]
+      member? n-aux [visibles] of location [
+        if route = [] or not secure-route route [
+          set route path_to best-visible n-aux
+        ]
+        follow-route
+      ])
+  ][ show "All violents are dead" ]
 end
+
+to-report best-visible [#bad-node]
+  let area [floor id] of location
+  ifelse [floor id] of #bad-node != area [
+    let dest (max-one-of ([visibles] of location) with [floor id = area] [distance #bad-node] )
+    ifelse dest != nobody [ report dest ][ report location ]
+  ][
+    let visib-aux sort-on [distance #bad-node] ([visibles] of location)
+    foreach visib-aux [ n ->
+      if not in-the-way? location n #bad-node [report n]
+    ]
+    report one-of exit-nodes
+  ]
+end
+
+to-report in-the-way? [#p1 #p2 #bad-node]
+  let x1 [xcor] of #p1
+  let y1 [ycor] of #p1
+  let x2 [xcor] of #p2
+  let y2 [ycor] of #p2
+  let x  [xcor] of #bad-node
+  let y  [ycor] of #bad-node
+  report ( (x - x1)*(y2 - y1) ) = ( (x2 - x1)*(y - y1) )
+end
+
+
 
 to ask-app
   (ifelse
@@ -640,10 +691,10 @@ end
 to follow-leader
   ifelse leader-sighted != nobody [
     if route != ([route] of leader-sighted)[ set route ([route] of leader-sighted) ] ; The leader is going to share the route with other agents
-    follow-route2
+    follow-route
   ][
     ifelse route != [] [ ; Maybe the leader is dead, but if he shared the route, follow the route
-      follow-route2
+      follow-route
     ][
       set state "running-away"
       run-away
@@ -654,8 +705,8 @@ end
 to run-away
   stop-hidden
   ifelse leadership > 0 [
-    if route = [] [set route path_to (min-one-of nodes with [id - floor id < 0.099] [distance myself] )]
-    follow-route2
+    if route = [] [set route path_to (min-one-of nodes with [member? (node who) exit-nodes] [distance myself] )]
+    follow-route
   ][
     if location = next-location or [residents] of next-location = [capacity] of next-location [search-intuitive-node]
     advance
@@ -693,8 +744,11 @@ to fight
 end
 
 to keep-working
-  if random-float 1 < 0.007 or distance location >= movility[
-    if location = next-location [ set next-location (one-of ([reacheables] of location)) ]
+  if random-float 1 < 0.007 or distance location >= speed[
+    if location = next-location [
+      set next-location (one-of ([reacheables] of location))
+      face next-location
+    ]
     advance
   ]
 end
@@ -717,19 +771,23 @@ to stop-hidden
   ]
 end
 
+; TO DO Hacer que los in-panic sigan a cualquiera??
 to irrational-behaviour
-  ifelse route != [] [
-    follow-route2
-  ][
-    ifelse any? ([visibles] of location) with[ (id - floor id)< 0.099] [ ; The agent has sighted an exit
-      set route (path_to one-of ([visibles] of location) with[ (id - floor id)< 0.099])
-      follow-route2
-    ][
-      if location = next-location [set next-location (max-one-of ([reacheables] of location) [habitable])]
-      advance
-    ]
-  ]
   stop-hidden
+  (ifelse
+    route != [] [
+      follow-route
+    ]
+    any? ([visibles] of location) with[member? (node who) exit-nodes] [ ; The agent has sighted an exit
+      set route (path_to one-of ([visibles] of location) with[member? (node who) exit-nodes])
+      follow-route
+    ]
+    location = next-location [
+      set next-location (min-one-of ([reacheables] of location) [attacker?])
+      face next-location
+      advance
+    ])
+
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -738,8 +796,12 @@ end
 
 
 
+to-report any-leader?
+  report leadership = 0 and any? leaders with [ location = ([location] of myself) and state != "not-alerted"]
+end
+
 to exit-reached?
-  if [id - floor id] of location < 0.099 [
+  if member? location exit-nodes and state != "not-alerted"[
     ifelse app [set app-rescued app-rescued + 1][set not-app-rescued not-app-rescued + 1]
     ask location [set residents residents - 1]
     die
@@ -766,7 +828,7 @@ to-report congested-path?
 end
 
 to-report any-violent?
-  report any? ([visibles] of location) with [habitable = 0]
+  report any? (turtle-set location ([visibles] of location)) with [habitable = 0]
 end
 
 to-report in-secure-room?
@@ -828,7 +890,7 @@ to-report path_to [#dest]
 end
 
 to advance ; Go to next-node
-  ifelse distance next-location < 1.5 [ ; The agent has reached next-location
+  ifelse distance next-location < distance location [ ; The agent has reached next-location
     ask location [set residents residents - 1]
     set location next-location
     ask location [set residents residents + 1]
@@ -859,8 +921,14 @@ to update-running-people
 end
 
 to update-flow
-  ifelse (link ([who] of location) ([who] of next-location) ) = nobody[
-    search-intuitive-node
+  let link-aux (link ([who] of location) ([who] of next-location) )
+  if ([transitable] of link-aux) = 0 [
+    set next-location location
+    face next-location
+  ]
+  set link-aux (link ([who] of location) ([who] of next-location) )
+  ifelse link-aux = nobody [
+    if route = [] [ search-intuitive-node ]
   ][
     ask (link ([who] of location) ([who] of next-location) ) [
       if flow-counter >= 1 [
@@ -868,7 +936,7 @@ to update-flow
           if [capacity > residents] of next-location [
             face next-location
             let dist-aux distance next-location
-            ifelse movility > dist-aux [fd dist-aux][fd movility]
+            ifelse speed > dist-aux [fd dist-aux][fd speed]
           ]
         ]
         set flow-counter flow-counter - 1
@@ -897,6 +965,19 @@ to search-intuitive-node
     ]
   ]
   face next-location
+end
+
+to leader-influence
+  if speed = not-alerted-speed [
+    set base-speed ( precision ((random-normal mean-speed max-speed-deviation) / 2)  2 )
+    set speed base-speed
+  ]
+  set leader-sighted ( max-one-of leaders with [location = ([location] of myself) and state != "not-alerted"] [leadership] )
+  set percived-risk [percived-risk] of leader-sighted
+  (ifelse
+    any-violent?     [set state "avoiding-violent"]
+    congested-path?  [set state "avoiding-crowd"]
+    [set state "with-leader"])
 end
 
 to casualty?
@@ -969,7 +1050,7 @@ to update-world
       let efct-aux efectivity
       ask location [
         set habitable 0
-        set attacker? efct-aux
+        set attacker? 1
         ask my-links [
           let visib-aux visibility
           let sound-aux sound
@@ -984,9 +1065,7 @@ to update-world
       ]
     ]
   ]
-  if any? nodes with [habitable < 1][
-    set not-recomended-nodes (remove-duplicates ( reduce sentence ([ [id] of reacheables] of (nodes with [habitable = 0]) ) ) )
-  ]
+
 end
 
 to-report app-trigger
@@ -997,7 +1076,7 @@ to-report app-trigger
   ;; 1) Count people with state running-away or with-leader
   ;; 2) Count people with speed > not-alerted-speed
   ;; 3) Ask for any link with a diference between flow and flow-counter
-  if crowd-running and (count peacefuls with [movility > not-alerted-speed]) >= what-is-a-crowd? [report true]
+  if crowd-running and (count peacefuls with [speed > not-alerted-speed]) >= what-is-a-crowd? [report true]
   report false
 end
 
@@ -1035,16 +1114,13 @@ to create-fuzzy-sets
   set panic-level           fuzzy:gaussian-set [100 30 [0 100]]
 
   set density-level         fuzzy:gaussian-set [100 12 [0 100]]
-  set speed-level           fuzzy:gaussian-set [100 35 [0 100]]
+  set speed-level           fuzzy:gaussian-set [200 50 [0 200]]
 
   set accident-prob-set     fuzzy:gaussian-set [100 20 [0 100]]
-
-
-
 end
 
-to compute-accident-prob [#density #speed]
 
+to compute-accident-prob [#density #speed]
   ;; Rule 4: IF density AND speed THEN accident
   let degree-of-consistency-R4a fuzzy:evaluation-of density-level #density
   let degree-of-consistency-R4b fuzzy:evaluation-of speed-level #speed
@@ -1084,8 +1160,8 @@ end
 
 
 to-report secure-exit?
-  if any? ([visibles] of location) with [id - floor id < 0.099] [
-    let dest-aux (one-of ([visibles] of location) with [id - floor id < 0.099])
+  if any? ([visibles] of location) with [member? (node who) exit-nodes] [
+    let dest-aux (one-of ([visibles] of location) with [member? (node who) exit-nodes])
     report secure-route (path_to dest-aux)
   ]
   report false
@@ -1094,7 +1170,7 @@ end
 to-report secure-route [#route]
   foreach #route [
     x ->
-    if [habitable] of x = 0 [report false]
+    if [attacker?] of x = 1 [report false]
   ]
   report true
 end
@@ -1173,8 +1249,8 @@ SLIDER
 num-peacefuls
 num-peacefuls
 1
-5000
-200.0
+1000
+177.0
 1
 1
 NIL
@@ -1189,7 +1265,7 @@ num-violents
 num-violents
 0
 10
-1.0
+2.0
 1
 1
 NIL
@@ -1243,7 +1319,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.2
+0.1
 0.05
 1
 NIL
@@ -1295,7 +1371,7 @@ max-iter
 max-iter
 0
 1000
-0.0
+205.0
 5
 1
 NIL
@@ -1386,7 +1462,7 @@ mean-speed
 mean-speed
 1
 2
-1.21
+2.0
 0.01
 1
 NIL
@@ -1422,13 +1498,13 @@ NIL
 0.0
 10.0
 0.0
-10.0
+1.0
 true
 false
 "" ""
 PENS
-"default" 1.0 0 -2674135 true "" "plot not-app-rescued"
-"pen-1" 1.0 0 -13345367 true "" "plot app-rescued"
+"default" 1.0 0 -2674135 true "" "plot 100 * not-app-rescued / total-without-app"
+"pen-1" 1.0 0 -13345367 true "" "plot 100 * app-rescued / total-with-app"
 
 PLOT
 1074
@@ -1441,13 +1517,13 @@ NIL
 0.0
 10.0
 0.0
-10.0
+1.0
 true
 false
 "" ""
 PENS
-"default" 1.0 0 -13345367 true "" "plot app-killed"
-"pen-1" 1.0 0 -2674135 true "" "plot not-app-killed"
+"default" 1.0 0 -13345367 true "" "plot 100 * app-killed / total-with-app"
+"pen-1" 1.0 0 -2674135 true "" "plot 100 * not-app-killed / total-without-app"
 
 SLIDER
 19
@@ -1467,8 +1543,8 @@ HORIZONTAL
 TEXTBOX
 41
 10
-167
-39
+168
+29
 WORLD PARAMS
 12
 0.0
@@ -1588,13 +1664,13 @@ NIL
 0.0
 10.0
 0.0
-10.0
+1.0
 true
 false
 "" ""
 PENS
-"default" 1.0 0 -2674135 true "" "plot not-app-accident"
-"pen-1" 1.0 0 -13345367 true "" "plot app-accident"
+"default" 1.0 0 -2674135 true "" "plot 100 * not-app-accident / total-without-app"
+"pen-1" 1.0 0 -13345367 true "" "plot 100 * app-accident / total-with-app"
 
 MONITOR
 1278
