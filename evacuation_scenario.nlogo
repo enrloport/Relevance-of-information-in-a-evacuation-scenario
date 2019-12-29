@@ -384,10 +384,12 @@ to find-target
   ; The attacker will search for the target agent first
   ifelse target-agent >= 0 and person t-agent != nobody [
     ifelse loc-aux = [location] of person t-agent [
-      ifelse shooting? [shoot (list location) ][attack]
+      ifelse shooting? [shoot-target person t-agent][attack-target person t-agent]
       set route []
     ][
-      if empty? route [ set route (path_to ([location] of person t-agent)) ]
+      if empty? route or last route != [location] of person t-agent [
+        set route (path_to ([location] of person t-agent))
+      ]
       follow-route
     ]
   ][
@@ -401,7 +403,6 @@ to find-target
       ]
     ]
   ]
-
 end
 
 
@@ -423,7 +424,6 @@ end
 
 to violent-advance
   ifelse distance next-location < distance location [ ; The agent has reached next-location
-
 ;    ask location [set residents residents - 1]
     set location next-location
 ;    ask location [set residents residents + 1]
@@ -434,7 +434,7 @@ to violent-advance
     ]
   ][
     ask (link ([who] of location) ([who] of next-location) ) [
-      if flow-counter >= 1 [
+      if flow-counter > 0 [
         ask myself [
           if [capacity > residents] of next-location [
             face next-location
@@ -448,10 +448,20 @@ to violent-advance
   ]
 end
 
+to attack-target [#target]
+  set detected 1
+  set color red
+  ask location [set attacker? 1]
+  let l location
+  if random-float 1 < efectivity [
+    ask #target [ died-agent "attack" ]
+  ]
+end
+
 to attack
   set detected 1
   set color red
-  ask location [set habitable 0]
+  ask location [set attacker? 1]
   let l location
   if random-float 1 < efectivity [
     if any? people with [location = l and hidden = false and p-type = "peaceful"][
@@ -460,13 +470,31 @@ to attack
   ]
 end
 
+to shoot-target [#target]
+  set detected 1
+  set color red
+  ask location [
+    set attacker? 1
+    set attacker-sound? attacker-sound? + 0.5
+    ask my-links with [sound > 0] [
+      let s-aux sound
+      ask other-end [set attacker-sound? attacker-sound? + 0.5 * s-aux]
+    ]
+  ]
+  if random-float 1 < efectivity [
+    ask #target [ died-agent "shoot" ]
+  ]
+
+
+end
+
 to shoot [#visibles]
   let all-reacheables ( turtle-set location ([reacheables] of location) )
   if any? peacefuls with [member? location all-reacheables][
     set detected 1
     set color red
     ask location [
-      set habitable 0
+      set attacker? 1
       set attacker-sound? attacker-sound? + 0.5
       ask my-links with [sound > 0] [
         let s-aux sound
@@ -660,9 +688,9 @@ to-report best-visible [#bad-node]
     let dest (max-one-of ([visibles] of location) with [floor id = area] [distance #bad-node] )
     ifelse dest != nobody [ report dest ][ report location ]
   ][
-    let visib-aux reverse ( sort-on [distance #bad-node] ([visibles] of location) )
+    let visib-aux reverse ( sort-on [distance #bad-node] (([visibles] of location) with [capacity - residents > 1]) )
     foreach visib-aux [ n ->
-      if not in-the-way? location n #bad-node and ([capacity - residents] of n > 1 ) [report n]
+      if not in-the-way? location n #bad-node and ([flow-counter] of link ([who] of location) ([who] of n) > 1 ) [report n]
     ]
     report one-of exit-nodes
   ]
@@ -784,10 +812,8 @@ to stop-hidden
   ]
 end
 
-; TO DO Hacer que los in-panic sigan a cualquiera??
 to irrational-behaviour
   stop-hidden
-  set label ""
   (ifelse
     route != [] [
       follow-route
@@ -801,8 +827,8 @@ to irrational-behaviour
       face next-location
       advance
     ]
-    [residents] of location > 1 [
-      set next-location ( [location] of one-of (peacefuls with [location = [location] of myself]) )
+    any? (peacefuls with [location = [location] of myself and state != "in-panic"]) [
+      set next-location ( [next-location] of one-of (peacefuls with [location = [location] of myself and state != "in-panic"]) )
       face next-location
       advance
     ]
@@ -822,7 +848,7 @@ end
 
 
 to-report any-leader?
-  report leadership = 0 and any? leaders with [ location = ([location] of myself) and state != "not-alerted"]
+  report leadership = 0 and any? leaders with [ location = ([location] of myself) and not member? state ["not-alerted" "in-panic"] ]
 end
 
 to exit-reached?
@@ -914,16 +940,20 @@ to-report path_to [#dest]
   report r
 end
 
+to update-location
+  ask location [set residents residents - 1]
+  set location next-location
+  ask location [set residents residents + 1]
+  ifelse member? location last-locations [
+    set last-locations ( lput location (remove location last-locations) )
+  ][
+    set last-locations (lput location last-locations)
+  ]
+end
+
 to advance ; Go to next-node
   ifelse distance next-location < distance location [ ; The agent has reached next-location
-    ask location [set residents residents - 1]
-    set location next-location
-    ask location [set residents residents + 1]
-    ifelse member? location last-locations [
-      set last-locations ( lput location (remove location last-locations) )
-    ][
-      set last-locations (lput location last-locations)
-    ]
+    update-location
   ][
     if location != next-location [
       update-running-people
@@ -962,6 +992,7 @@ to update-flow
             face next-location
             let dist-aux distance next-location
             ifelse speed > dist-aux [fd dist-aux][fd speed]
+            if distance next-location < distance location [update-location]
           ]
         ]
         set flow-counter flow-counter - 1
@@ -971,25 +1002,29 @@ to update-flow
 end
 
 to search-intuitive-node
-  let destinations ([reacheables] of location)
-  let secure-destinations (destinations with [habitable > 0])
-  if any? secure-destinations [set destinations secure-destinations]
+  carefully [
+    let destinations ([reacheables] of location)
+    let secure-destinations (destinations with [attacker? < 1])
+    if any? secure-destinations [set destinations secure-destinations]
 
-  let ll last-locations
-  ifelse any? destinations with[ not (member? self ll)  ] [
-    set next-location one-of destinations with[ not (member? self ll) and capacity - residents > 1 ]
-  ][
-    foreach last-locations [
-      x ->
-      ask x [
-        if member? x destinations [
-          ask myself [ set next-location x ]
-          stop
+    let ll last-locations
+    let not-visited one-of destinations with[ not (member? self ll) and capacity - residents > 1 ]
+
+    ifelse not-visited != nobody [
+      set next-location not-visited
+    ][
+      foreach last-locations [
+        x ->
+        ask x [
+          if member? x destinations [
+            ask myself [ set next-location x ]
+            stop
+          ]
         ]
       ]
     ]
-  ]
-  face next-location
+    face next-location
+  ][show "there is no good node"]
 end
 
 to leader-influence
@@ -997,12 +1032,12 @@ to leader-influence
     set base-speed ( precision ((random-normal mean-speed max-speed-deviation) / 2)  2 )
     set speed base-speed
   ]
-  set leader-sighted ( max-one-of leaders with [location = ([location] of myself) and state != "not-alerted"] [leadership] )
+  set leader-sighted ( max-one-of leaders with [location = ([location] of myself) and not member? state ["not-alerted" "in-panic"] ] [leadership] )
   set percived-risk [percived-risk] of leader-sighted
   (ifelse
     any-violent?     [set state "avoiding-violent"]
     congested-path?  [set state "avoiding-crowd"]
-    [set state "with-leader"])
+    true             [set state "with-leader"])
 end
 
 to casualty?
@@ -1333,7 +1368,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.0
+0.45
 0.05
 1
 NIL
