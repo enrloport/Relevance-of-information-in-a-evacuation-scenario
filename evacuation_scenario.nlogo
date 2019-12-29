@@ -219,7 +219,7 @@ to setup
     set fear              0
     set percived-risk     0
     set in-panic          0
-    set p-timer             0
+    set p-timer           0
     set base-speed        not-alerted-speed
     set speed             base-speed
     set leader-sighted    nobody
@@ -406,6 +406,7 @@ end
 
 
 to follow-route
+  if location = last route [ set p-timer 4 ]
   ifelse location = next-location [
     ifelse (not member? location route) or location = last route  [
       set route []
@@ -510,91 +511,93 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to peaceful-believe
-  ifelse any-leader? [
-    leader-influence
-  ][
-
-    let percived-signals 0
-    ifelse app-info? and app and app-trigger [
-      set percived-signals 1
-    ][
-      update-signals
-      set percived-signals (attacker-sighted + fire-sighted + bomb-sighted + attacker-heard
-        + fire-heard + bomb-heard + scream-heard + corpse-sighted + running-people)
-      if percived-signals > 1 [set percived-signals 1]
+  (ifelse
+    any-leader? [
+      leader-influence
     ]
-
-    if percived-signals > 0 [
-      if fear < 100 [
-        set fear (fear + 1 + number-of-signals)
-        if fear > 100 [set fear 100]
-      ]
-      compute-panic fear sensibility
-      set in-panic degree-of-consistency-R3
-
-      let dis-aux 15
-
-      if any? ([visibles] of location) with [all-my-signals > 0] [
-        let near-signal max-one-of ([visibles] of location) [all-my-signals]
-        set dis-aux ( [dist] of ( link ([who] of location) ([who] of near-signal) ) )
+    [
+      let percived-signals 0
+      ifelse app-info? and app and app-trigger [
+        set percived-signals 1
+      ][
+        update-signals
+        set percived-signals (attacker-sighted + fire-sighted + bomb-sighted + attacker-heard
+          + fire-heard + bomb-heard + scream-heard + corpse-sighted + running-people)
+        if percived-signals > 1 [set percived-signals 1]
       ]
 
-      compute-danger (dis-aux) (percived-signals * 100)
-      if degree-of-consistency-R2 > degree-of-consistency-R1 and degree-of-consistency-R2 > percived-risk[
-        set percived-risk degree-of-consistency-R2
-        if speed = not-alerted-speed [
-          set base-speed ( precision ((random-normal mean-speed max-speed-deviation) / 2) 2 )
-          set speed base-speed
+      if percived-signals > 0 [
+        if fear < 100 [
+          set fear (fear + 1 + number-of-signals)
+          if fear > 100 [set fear 100]
+        ]
+        compute-panic fear sensibility
+        set in-panic degree-of-consistency-R3
+
+        let dis-aux 15
+
+        if any? ([visibles] of location) with [all-my-signals > 0] [
+          let near-signal max-one-of ([visibles] of location) [all-my-signals]
+          set dis-aux ( [dist] of ( link ([who] of location) ([who] of near-signal) ) )
+        ]
+
+        compute-danger (dis-aux) (percived-signals * 100)
+        if degree-of-consistency-R2 > degree-of-consistency-R1 and degree-of-consistency-R2 > percived-risk[
+          set percived-risk degree-of-consistency-R2
+          if speed = not-alerted-speed [
+            set base-speed ( precision ((random-normal mean-speed max-speed-deviation) / 2) 2 )
+            set speed base-speed
+          ]
         ]
       ]
-    ]
-
-  ]
+  ])
 
 end
 
 to peaceful-desire
   if not in-secure-room? and percived-risk > 0 [
     (ifelse
-      in-panic > 0.5   [set state "in-panic"]
-      any-violent?     [set state "avoiding-violent"]
-      congested-path?  [set state "avoiding-crowd"]
-      secure-exit?     [set state "reaching-exit"]
-      must-I-hide?     [set state "hidden"]
-      must-I-fight?    [set state "fighting"]
-      app-pack?        [set state "asking-app"]
-      not empty? route [set state "following-route"]
-      [set state "running-away"])
+      secure-exit?        [set state "reaching-exit"]
+      in-panic > 0.5      [set state "in-panic"]
+      p-timer > 0         [set state "waiting"]
+      any-violent?        [set state "avoiding-violent"]
+      congested-path?     [set state "avoiding-crowd"]
+      secure-route? route [set state "following-route"]
+      must-I-hide?        [set state "hidden"]
+      must-I-fight?       [set state "fighting"]
+      app-pack?           [set state "asking-app"]
+      true                [set state "running-away"])
   ]
 end
 
 to peaceful-intention
   set speed base-speed
   (ifelse
-    state = "avoiding-violent"[avoid-violent]
-    state = "avoiding-crowd"  [avoid-crowd]
-    state = "in-panic"        [irrational-behaviour]
-    state = "reaching-exit"   [go-to-exit]
-    state = "not-alerted"     [keep-working]
-    state = "with-leader"     [follow-leader]
-    state = "running-away"    [run-away]
-    state = "hidden"          [hide]
-    state = "fighting"        [fight]
     state = "asking-app"      [ask-app]
-    state = "following-route" [follow-route])
+    state = "avoiding-crowd"  [avoid-crowd]
+    state = "avoiding-violent"[avoid-violent]
+    state = "fighting"        [fight]
+    state = "following-route" [follow-route]
+    state = "hidden"          [hide]
+    state = "in-panic"        [irrational-behaviour]
+    state = "not-alerted"     [keep-working]
+    state = "reaching-exit"   [go-to-exit]
+    state = "running-away"    [run-away]
+    state = "waiting"         [to-wait]
+    state = "with-leader"     [follow-leader])
 
   (ifelse
+    state = "asking-app"      [set color white]
     state = "avoiding-violent"[set color brown]
     state = "avoiding-crowd"  [set color sky]
-    state = "reaching-exit"   [set color 57]
-    state = "in-panic"        [set color 13]
-    state = "with-leader"     [set color 48]
-    state = "running-away"    [set color green]
-    state = "hidden"          [set color grey]
     state = "fighting"        [set color black]
-    state = "asking-app"      [set color white]
-    state = "following-route" [set color 57])
-
+    state = "following-route" [set color 57]
+    state = "hidden"          [set color grey]
+    state = "in-panic"        [set color 13]
+    state = "reaching-exit"   [set color 57]
+    state = "running-away"    [set color green]
+    state = "waiting"         [set color 8]
+    state = "with-leader"     [set color 48])
 
 end
 
@@ -610,11 +613,20 @@ to avoid-crowd
 end
 
 to go-to-exit
-  if route = [] or last route != one-of ([visibles] of location) with [member? (node who) exit-nodes] [
+  if route = [] or [ id - floor id ] of last route > 0.099  [
     set route (path_to one-of ([visibles] of location) with [id - floor id < 0.099])
     face (item 1 route)
   ]
   follow-route
+end
+
+to to-wait
+  let loc-aux location
+  ifelse any? violents with [ location = loc-aux ] [
+    avoid-violent
+  ][
+    set p-timer p-timer - 1
+  ]
 end
 
 to avoid-violent
@@ -634,7 +646,7 @@ to avoid-violent
         advance
       ]
       member? n-aux [visibles] of location [
-        if route = [] or not secure-route route [
+        if not secure-route? route [
           set route path_to best-visible n-aux
         ]
         follow-route
@@ -648,9 +660,9 @@ to-report best-visible [#bad-node]
     let dest (max-one-of ([visibles] of location) with [floor id = area] [distance #bad-node] )
     ifelse dest != nobody [ report dest ][ report location ]
   ][
-    let visib-aux sort-on [distance #bad-node] ([visibles] of location)
+    let visib-aux reverse ( sort-on [distance #bad-node] ([visibles] of location) )
     foreach visib-aux [ n ->
-      if not in-the-way? location n #bad-node [report n]
+      if not in-the-way? location n #bad-node and ([capacity - residents] of n > 1 ) [report n]
     ]
     report one-of exit-nodes
   ]
@@ -708,7 +720,8 @@ to run-away
     if route = [] [set route path_to (min-one-of nodes with [member? (node who) exit-nodes] [distance myself] )]
     follow-route
   ][
-    if location = next-location or [residents] of next-location = [capacity] of next-location [search-intuitive-node]
+    ;if location = next-location or [residents] of next-location = [capacity] of next-location [search-intuitive-node]
+    if location = next-location or [capacity - residents] of next-location <= 0 [search-intuitive-node]
     advance
   ]
 end
@@ -746,7 +759,7 @@ end
 to keep-working
   if random-float 1 < 0.007 or distance location >= speed[
     if location = next-location [
-      set next-location (one-of ([reacheables] of location))
+      set next-location (one-of ([reacheables] of location) with [capacity - residents > 1] )
       face next-location
     ]
     advance
@@ -774,6 +787,7 @@ end
 ; TO DO Hacer que los in-panic sigan a cualquiera??
 to irrational-behaviour
   stop-hidden
+  set label ""
   (ifelse
     route != [] [
       follow-route
@@ -782,11 +796,22 @@ to irrational-behaviour
       set route (path_to one-of ([visibles] of location) with[member? (node who) exit-nodes])
       follow-route
     ]
-    location = next-location [
-      set next-location (min-one-of ([reacheables] of location) [attacker?])
+    any? violents with [next-location = [location] of myself][
+      set next-location (min-one-of ([reacheables] of location) with [capacity - residents > 1] [attacker?]  )
       face next-location
       advance
-    ])
+    ]
+    [residents] of location > 1 [
+      set next-location ( [location] of one-of (peacefuls with [location = [location] of myself]) )
+      face next-location
+      advance
+    ]
+    location = next-location [
+      set next-location (one-of ([reacheables] of location) with [capacity - residents > 1] )
+      face next-location
+      advance
+    ]
+    true [advance])
 
 end
 
@@ -952,7 +977,7 @@ to search-intuitive-node
 
   let ll last-locations
   ifelse any? destinations with[ not (member? self ll)  ] [
-    set next-location one-of destinations with[ not (member? self ll)]
+    set next-location one-of destinations with[ not (member? self ll) and capacity - residents > 1 ]
   ][
     foreach last-locations [
       x ->
@@ -1160,14 +1185,15 @@ end
 
 
 to-report secure-exit?
-  if any? ([visibles] of location) with [member? (node who) exit-nodes] [
-    let dest-aux (one-of ([visibles] of location) with [member? (node who) exit-nodes])
-    report secure-route (path_to dest-aux)
+  let exit-aux one-of ( ([visibles] of location) with [member? (node who) exit-nodes] )
+  if exit-aux != nobody [
+    report secure-route? (path_to exit-aux)
   ]
   report false
 end
 
-to-report secure-route [#route]
+to-report secure-route? [#route]
+  if empty? #route [report false]
   foreach #route [
     x ->
     if [attacker?] of x = 1 [report false]
@@ -1175,22 +1201,10 @@ to-report secure-route [#route]
   report true
 end
 
-to-report not-secure-route [#route]
-  foreach #route [
-    x ->
-    if [habitable] of x = 0 [report true]
-  ]
-  report false
-end
-
-to-report secure-route? [#route]
-  let sum-aux 0
-  foreach #route [ x ->  set sum-aux sum-aux + ([habitable] of x) ]
-  report sum-aux
-end
 
 to-report my-least-bad-route [#routes]
-  report first ( sort-by [ [route1 route2 ] -> secure-route? route1 < secure-route? route2 ] #routes )
+  ; TODO report first ( sort-by [ [route1 route2 ] -> secure-route? route1 < secure-route? route2 ] #routes )
+  report []
 end
 
 to-report all-my-signals
@@ -1319,7 +1333,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.1
+0.0
 0.05
 1
 NIL
@@ -1371,7 +1385,7 @@ max-iter
 max-iter
 0
 1000
-205.0
+0.0
 5
 1
 NIL
@@ -1425,7 +1439,7 @@ app-percentage
 app-percentage
 0
 100
-50.0
+0.0
 1
 1
 NIL
