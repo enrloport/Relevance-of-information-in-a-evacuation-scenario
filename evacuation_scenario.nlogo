@@ -5,18 +5,20 @@ globals [
   leaders
   peacefuls
   violents
+  violents-killed
+
+  not-alerted-app
+  app-accident
   app-killed
   app-rescued
+  not-alerted-not-app
+  not-app-accident
   not-app-killed
   not-app-rescued
   total-with-app
   total-without-app
-
-  app-accident
-  not-app-accident
   total-killed
   total-rescued
-  violents-killed
 
   low-risk
   high-risk
@@ -27,7 +29,6 @@ globals [
   fear-level
   sensibility-level
   panic-level
-
   density-level
   speed-level
   accident-prob-set
@@ -43,8 +44,6 @@ globals [
 
   t-agent
   transitable-edges
-  not-alerted-app
-  not-alerted-not-app
 ]
 
 breed [ nodes node ]
@@ -66,7 +65,6 @@ nodes-own [
   id
   info
   capacity
-  habitable
   density
   hidden-places
   hidden-people
@@ -165,7 +163,6 @@ to setup
       ])
       set shape         "circle"
       set color         blue
-      set habitable     1
       set residents     0
       set density       0
       set hidden-people 0
@@ -335,14 +332,13 @@ end
 to violents-desire
   (ifelse
     police-sighted > 0 [set state "avoiding-police"]
-    target-node >= 0 or ( target-agent >= 0 and person t-agent != nobody ) [set state "finding-target"]
-    [set state "aggressive-behaviour"]
+    any-target?        [set state "finding-target"]
+    true               [set state "aggressive-behaviour"]
   )
 end
 
 to violents-intention
   (ifelse
-    state = "avoiding-police"      [avoid-police]
     state = "finding-target"       [find-target]
     state = "aggressive-behaviour" [be-aggressive]
   )
@@ -354,6 +350,7 @@ end
 
 to avoid-police
   set label "ap"
+  ; TO DO
 end
 
 to be-aggressive
@@ -375,6 +372,10 @@ to be-aggressive
       violent-advance
     ]
   ]
+end
+
+to-report any-target?
+  report target-node >= 0 or ( target-agent >= 0 and person t-agent != nobody )
 end
 
 to find-target
@@ -407,7 +408,6 @@ end
 
 
 to follow-route
-  if location = last route [ set p-timer 4 ]
   ifelse location = next-location [
     ifelse (not member? location route) or location = last route  [
       set route []
@@ -464,9 +464,8 @@ to attack
   ask location [set attacker? 1]
   let l location
   if random-float 1 < efectivity [
-    if any? people with [location = l and hidden = false and p-type = "peaceful"][
-      ask one-of people with [location = l and hidden = false and p-type = "peaceful"][ died-agent "attack" ]
-    ]
+    let peaceful-aux one-of peacefuls with [location = l and not hidden]
+    if peaceful-aux != nobody [ ask peaceful-aux [ died-agent "attack" ] ]
   ]
 end
 
@@ -509,12 +508,13 @@ to attacker-next-location
   let destinations ([reacheables] of location)
   let ll last-locations
   (ifelse
-    any? destinations with [residents > 0][
-      set next-location one-of destinations with [residents > 0]
+    any? destinations with [residents - hidden-places > 0][
+      set next-location one-of destinations with [residents - hidden-places > 0]
     ]
     any? destinations with [not (member? self ll)] [
       set next-location one-of destinations with [not (member? self ll)]
-    ][
+    ]
+    true [
       foreach last-locations [
         x ->
         ask x [
@@ -591,8 +591,6 @@ to peaceful-desire
       any-violent?        [set state "avoiding-violent"]
       congested-path?     [set state "avoiding-crowd"]
       secure-route? route [set state "following-route"]
-      must-I-hide?        [set state "hidden"]
-      must-I-fight?       [set state "fighting"]
       app-pack?           [set state "asking-app"]
       true                [set state "running-away"])
   ]
@@ -604,9 +602,7 @@ to peaceful-intention
     state = "asking-app"      [ask-app]
     state = "avoiding-crowd"  [avoid-crowd]
     state = "avoiding-violent"[avoid-violent]
-    state = "fighting"        [fight]
     state = "following-route" [follow-route]
-    state = "hidden"          [hide]
     state = "in-panic"        [irrational-behaviour]
     state = "not-alerted"     [keep-working]
     state = "reaching-exit"   [go-to-exit]
@@ -618,9 +614,7 @@ to peaceful-intention
     state = "asking-app"      [set color white]
     state = "avoiding-violent"[set color brown]
     state = "avoiding-crowd"  [set color sky]
-    state = "fighting"        [set color black]
     state = "following-route" [set color 57]
-    state = "hidden"          [set color grey]
     state = "in-panic"        [set color 13]
     state = "reaching-exit"   [set color 57]
     state = "running-away"    [set color green]
@@ -664,6 +658,8 @@ to avoid-violent
     set speed ( base-speed + ( fuzzy:evaluation-of close-to-me (distance v-aux) ) )
 
     (ifelse
+      must-I-hide?        [hide]
+      must-I-fight?       [fight]
       [attacker?] of location = 1 [
         if route = [] [set route path_to one-of exit-nodes]
         follow-route
@@ -678,6 +674,7 @@ to avoid-violent
           set route path_to best-visible n-aux
         ]
         follow-route
+        if not empty? route and location = last route [ set p-timer 4 ]
       ])
   ][ show "All violents are dead" ]
 end
@@ -708,7 +705,7 @@ end
 
 
 
-to ask-app
+to ask-app ;; Under construction
   (ifelse
     app-recomendations = 0 [ ; The app will recomend to hide somewhere, but is not giving a route to the agent
       set route []
@@ -748,7 +745,6 @@ to run-away
     if route = [] [set route path_to (min-one-of nodes with [member? (node who) exit-nodes] [distance myself] )]
     follow-route
   ][
-    ;if location = next-location or [residents] of next-location = [capacity] of next-location [search-intuitive-node]
     if location = next-location or [capacity - residents] of next-location <= 0 [search-intuitive-node]
     advance
   ]
@@ -757,8 +753,8 @@ end
 to hide
   if hidden = false[
     set hidden true
+    if leadership = 0 [set color grey]
     ifelse [lock? = 1] of location  and (not violents-near) [
-      if leadership = 0 [set color pink]
       ask location [
         ask my-links with [lockable? > 0] [
           if locked? = 0 [
@@ -775,6 +771,7 @@ end
 
 to fight
   stop-hidden
+  if leadership = 0 [set color black]
   if random-float 1 < 0.1 [
     let loc-aux location
     ask one-of violents with [location = loc-aux] [
@@ -879,7 +876,7 @@ to-report congested-path?
 end
 
 to-report any-violent?
-  report any? (turtle-set location ([visibles] of location)) with [habitable = 0]
+  report any? (turtle-set location ([visibles] of location)) with [attacker? = 1]
 end
 
 to-report in-secure-room?
@@ -923,15 +920,15 @@ end
 
 
 to update-signals
-  set attacker-sighted attacker-sighted + [attacker?] of location
-  set fire-sighted fire-sighted + [fire?] of location
-  set bomb-sighted bomb-sighted + [bomb?] of location
-  set attacker-heard attacker-heard + [attacker-sound?] of location
-  set fire-heard fire-heard + [fire-sound?] of location
-  set bomb-heard bomb-heard + [bomb-sound?] of location
-  set scream-heard scream-heard + [scream?] of location
-  set corpse-sighted corpse-sighted + [corpses?] of location
-  set running-people running-people + [running-people?] of location
+  set attacker-sighted  attacker-sighted + [attacker?]       of location
+  set fire-sighted      fire-sighted     + [fire?]           of location
+  set bomb-sighted      bomb-sighted     + [bomb?]           of location
+  set attacker-heard    attacker-heard   + [attacker-sound?] of location
+  set fire-heard        fire-heard       + [fire-sound?]     of location
+  set bomb-heard        bomb-heard       + [bomb-sound?]     of location
+  set scream-heard      scream-heard     + [scream?]         of location
+  set corpse-sighted    corpse-sighted   + [corpses?]        of location
+  set running-people    running-people   + [running-people?] of location
 end
 
 to-report path_to [#dest]
@@ -1042,7 +1039,7 @@ end
 
 to casualty?
   compute-accident-prob ([density] of location ) (floor (speed * 100))
-  let acc-prob degree-of-consistency-R4 * ([capacity] of location) * 0.0001 ; Mortal
+  let acc-prob degree-of-consistency-R4 * ([capacity] of location) * 0.0001 ; Mortal accident
 
   if random-float 1 < acc-prob [died-agent "casualty"]
 end
@@ -1081,10 +1078,9 @@ end
 ;;                                                                                             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; It changes the habitable atribute in nodes depending on danger location, also updates the counter-flow in edges
+; It changes the attacker? atribute in nodes depending on danger location, also updates the counter-flow in edges
 to update-world
   ask nodes [
-    set habitable       1
     set fire?           0
     set attacker?       0
     set bomb?           0
@@ -1109,7 +1105,6 @@ to update-world
     if detected > 0 [
       let efct-aux efectivity
       ask location [
-        set habitable 0
         set attacker? 1
         ask my-links [
           let visib-aux visibility
@@ -1128,7 +1123,7 @@ to update-world
 
 end
 
-to-report app-trigger
+to-report app-trigger ; Under construction
   ;; First blood trigger
   if first-blood and app-killed + not-app-killed > 0 [report true]
 
@@ -1474,7 +1469,7 @@ app-percentage
 app-percentage
 0
 100
-0.0
+50.0
 1
 1
 NIL
