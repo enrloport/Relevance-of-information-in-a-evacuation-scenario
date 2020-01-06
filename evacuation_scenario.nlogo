@@ -227,8 +227,6 @@ to setup
     set sensibility       floor( ( random-normal 0.5 0.2 ) * 100 )
     if sensibility > 100 [set sensibility 100]
 
-    ask location [set residents residents + 1 ]
-
     ifelse random 100 < app-percentage [ set app true ][ set app false ]
 
     ifelse random-float 1 < leaders-percentage[
@@ -239,6 +237,8 @@ to setup
       set leadership     0
       set color          white
     ]
+
+    ask location [set residents residents + 1 ]
     move-to location
   ]
   if target-agent >= 0 [
@@ -374,23 +374,18 @@ to be-aggressive
   ]
 end
 
-to-report any-target?
-  report target-node >= 0 or ( target-agent >= 0 and person t-agent != nobody )
-end
-
 to find-target
   set label "ft"
   let loc-aux location
 
   ; The attacker will search for the target agent first
-  ifelse target-agent >= 0 and person t-agent != nobody [
-    ifelse loc-aux = [location] of person t-agent [
+  ifelse person t-agent != nobody [
+    let target-location ([location] of person t-agent)
+    ifelse loc-aux = target-location [
       ifelse shooting? [shoot-target person t-agent][attack-target person t-agent]
       set route []
     ][
-      if empty? route or last route != [location] of person t-agent [
-        set route (path_to ([location] of person t-agent))
-      ]
+      if empty? route or last route != target-location [ set route (path_to target-location) ]
       follow-route
     ]
   ][
@@ -403,22 +398,6 @@ to find-target
         follow-route
       ]
     ]
-  ]
-end
-
-
-to follow-route
-  ifelse location = next-location [
-    ifelse (not member? location route) or location = last route  [
-      set route []
-    ][
-      let loc-aux location
-      let pos-aux (position loc-aux route)
-      set next-location ( item (pos-aux + 1) route)
-      face next-location
-    ]
-  ][
-    ifelse p-type = "violent" [violent-advance][advance]
   ]
 end
 
@@ -449,8 +428,10 @@ to violent-advance
 end
 
 to attack-target [#target]
-  set detected 1
-  set color red
+  if detected = 0 [
+    set detected 1
+    set color red
+  ]
   ask location [set attacker? 1]
   let l location
   if random-float 1 < efectivity [
@@ -459,8 +440,10 @@ to attack-target [#target]
 end
 
 to attack
-  set detected 1
-  set color red
+  if detected = 0 [
+    set detected 1
+    set color red
+  ]
   ask location [set attacker? 1]
   let l location
   if random-float 1 < efectivity [
@@ -470,8 +453,10 @@ to attack
 end
 
 to shoot-target [#target]
-  set detected 1
-  set color red
+  if detected = 0 [
+    set detected 1
+    set color red
+  ]
   ask location [
     set attacker? 1
     set attacker-sound? attacker-sound? + 0.5
@@ -483,15 +468,15 @@ to shoot-target [#target]
   if random-float 1 < efectivity [
     ask #target [ died-agent "shoot" ]
   ]
-
-
 end
 
 to shoot [#visibles]
   let all-reacheables ( turtle-set location ([reacheables] of location) )
   if any? peacefuls with [member? location all-reacheables][
-    set detected 1
-    set color red
+    if detected = 0 [
+      set detected 1
+      set color red
+    ]
     ask location [
       set attacker? 1
       set attacker-sound? attacker-sound? + 0.5
@@ -555,10 +540,8 @@ to peaceful-believe
       ]
 
       if percived-signals > 0 [
-        if fear < 100 [
-          set fear (fear + 1 + number-of-signals)
-          if fear > 100 [set fear 100]
-        ]
+        set fear min (list (fear + 1 + number-of-signals) 100 )
+
         compute-panic fear sensibility
         set in-panic degree-of-consistency-R3
 
@@ -583,7 +566,7 @@ to peaceful-believe
 end
 
 to peaceful-desire
-  if not in-secure-room? and percived-risk > 0 [
+  if not in-secure-room? and not hidden and percived-risk > 0 [
     (ifelse
       secure-exit?        [set state "reaching-exit"]
       in-panic > 0.5      [set state "in-panic"]
@@ -598,17 +581,6 @@ end
 
 to peaceful-intention
   set speed base-speed
-  (ifelse
-    state = "asking-app"      [ask-app]
-    state = "avoiding-crowd"  [avoid-crowd]
-    state = "avoiding-violent"[avoid-violent]
-    state = "following-route" [follow-route]
-    state = "in-panic"        [irrational-behaviour]
-    state = "not-alerted"     [keep-working]
-    state = "reaching-exit"   [go-to-exit]
-    state = "running-away"    [run-away]
-    state = "waiting"         [to-wait]
-    state = "with-leader"     [follow-leader])
 
   (ifelse
     state = "asking-app"      [set color white]
@@ -620,6 +592,18 @@ to peaceful-intention
     state = "running-away"    [set color green]
     state = "waiting"         [set color 8]
     state = "with-leader"     [set color 48])
+
+  (ifelse
+    state = "asking-app"      [ask-app]
+    state = "avoiding-crowd"  [avoid-crowd]
+    state = "avoiding-violent"[avoid-violent]
+    state = "following-route" [follow-route]
+    state = "in-panic"        [irrational-behaviour]
+    state = "not-alerted"     [keep-working]
+    state = "reaching-exit"   [go-to-exit]
+    state = "running-away"    [run-away]
+    state = "waiting"         [to-wait]
+    state = "with-leader"     [follow-leader])
 
 end
 
@@ -652,6 +636,7 @@ to to-wait
 end
 
 to avoid-violent
+  stop-hidden
   carefully [
     let v-aux min-one-of violents [distance myself]
     let n-aux [location] of v-aux
@@ -687,7 +672,7 @@ to-report best-visible [#bad-node]
   ][
     let visib-aux reverse ( sort-on [distance #bad-node] (([visibles] of location) with [capacity - residents > 1]) )
     foreach visib-aux [ n ->
-      if not in-the-way? location n #bad-node and ([flow-counter] of link ([who] of location) ([who] of n) > 1 ) [report n]
+      if not in-the-way? location n #bad-node [ report n]
     ]
     report one-of exit-nodes
   ]
@@ -726,6 +711,7 @@ to ask-app ;; Under construction
 end
 
 to follow-leader
+  stop-hidden
   ifelse leader-sighted != nobody [
     if route != ([route] of leader-sighted)[ set route ([route] of leader-sighted) ] ; The leader is going to share the route with other agents
     follow-route
@@ -751,9 +737,9 @@ to run-away
 end
 
 to hide
+  if leadership = 0 [set color grey]
   if hidden = false[
     set hidden true
-    if leadership = 0 [set color grey]
     ifelse [lock? = 1] of location  and (not violents-near) [
       ask location [
         ask my-links with [lockable? > 0] [
@@ -843,6 +829,9 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+to-report any-target?
+  report target-node >= 0 or ( target-agent >= 0 and person t-agent != nobody )
+end
 
 to-report any-leader?
   report leadership = 0 and any? leaders with [ location = ([location] of myself) and not member? state ["not-alerted" "in-panic"] ]
@@ -876,6 +865,7 @@ to-report congested-path?
 end
 
 to-report any-violent?
+  if secure-route? route [report false]
   report any? (turtle-set location ([visibles] of location)) with [attacker? = 1]
 end
 
@@ -911,7 +901,6 @@ end
 to-report enough-people? [#loc]
   report ( ([residents] of location) > ( 11 * count (violents with [#loc = location]) ) )
 end
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -956,6 +945,21 @@ to advance ; Go to next-node
       update-running-people
       update-flow
     ]
+  ]
+end
+
+to follow-route
+  ifelse location = next-location [
+    ifelse (not member? location route) or location = last route  [
+      set route []
+    ][
+      let loc-aux location
+      let pos-aux (position loc-aux route)
+      set next-location ( item (pos-aux + 1) route)
+      face next-location
+    ]
+  ][
+    ifelse p-type = "violent" [violent-advance][advance]
   ]
 end
 
@@ -1294,7 +1298,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-177.0
+300.0
 1
 1
 NIL
@@ -1363,7 +1367,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.45
+0.15
 0.05
 1
 NIL
