@@ -816,9 +816,14 @@ to irrational-behaviour
       advance
     ]
     location = next-location [
-      set next-location (one-of ([reacheables] of location) with [capacity - residents > 1] )
-      face next-location
-      advance
+      carefully [
+        set next-location (one-of ([reacheables] of location) with [capacity - residents > 1] )
+        face next-location
+      ][
+        set next-location location
+        face next-location
+      ]
+        advance
     ]
     true [advance])
 
@@ -1043,8 +1048,7 @@ end
 
 to casualty?
   compute-accident-prob ([density] of location ) (floor (speed * 100))
-  let acc-prob degree-of-consistency-R4 * ([capacity] of location) * 0.0001 ; Mortal accident
-
+  let acc-prob degree-of-consistency-R4 * ([capacity] of location) * 0.001 ; Mortal accident
   if random-float 1 < acc-prob [died-agent "casualty"]
 end
 
@@ -1173,7 +1177,7 @@ to create-fuzzy-sets
   set panic-level           fuzzy:gaussian-set [100 30 [0 100]]
 
   set density-level         fuzzy:gaussian-set [100 12 [0 100]]
-  set speed-level           fuzzy:gaussian-set [200 50 [0 200]]
+  set speed-level           fuzzy:gaussian-set [200 35 [0 200]]
 
   set accident-prob-set     fuzzy:gaussian-set [100 20 [0 100]]
 end
@@ -1298,7 +1302,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-300.0
+170.0
 1
 1
 NIL
@@ -1432,7 +1436,7 @@ SWITCH
 65
 shooting?
 shooting?
-1
+0
 1
 -1000
 
@@ -1443,7 +1447,7 @@ SWITCH
 206
 app-info?
 app-info?
-0
+1
 1
 -1000
 
