@@ -116,6 +116,7 @@ people-own [
   route
   state
   p-timer
+  bad-area
   efectivity
   detected
 ]
@@ -292,7 +293,7 @@ to go
   update-world
 
   ; A label "T" for the target node. The target agent will be greater than other agents
-  if target-node  > -1 [ ask node target-node [set label "who"] ]
+  if target-node  > -1 [ ask node target-node [set label who] ]
   if target-agent > -1 [
     set t-agent (count nodes + target-agent)
     ifelse person t-agent != nobody [ ask person t-agent [set size 2] ][ set target-agent -1 ]
@@ -377,9 +378,8 @@ end
 to find-target
   set label "ft"
   let loc-aux location
-
   ; The attacker will search for the target agent first
-  ifelse person t-agent != nobody [
+  ifelse target-agent > -1 and person t-agent != nobody [
     let target-location ([location] of person t-agent)
     ifelse loc-aux = target-location [
       ifelse shooting? [shoot-target person t-agent][attack-target person t-agent]
@@ -402,30 +402,62 @@ to find-target
 end
 
 to violent-advance
-  ifelse distance next-location < distance location [ ; The agent has reached next-location
-;    ask location [set residents residents - 1]
-    set location next-location
-;    ask location [set residents residents + 1]
-    ifelse not member? location last-locations [ ; Last visited node will be put in the last position
-      set last-locations (lput location last-locations)
-    ][
-      set last-locations (lput location (remove location last-locations))
-    ]
-  ][
-    ask (link ([who] of location) ([who] of next-location) ) [
-      if flow-counter > 0 [
-        ask myself [
-          if [capacity > residents] of next-location [
-            face next-location
-            let dist-aux distance next-location
-            ifelse speed > dist-aux [fd dist-aux][fd speed]
+
+  ask (link ([who] of location) ([who] of next-location) ) [
+    if flow-counter > 0 [
+      ask myself [
+        if [capacity > residents] of next-location [
+          face next-location
+          let dist-aux distance next-location
+          ifelse speed > dist-aux [fd dist-aux][fd speed]
+
+
+          if distance next-location < distance location [ ; The agent has reached next-location
+                                                              ;    ask location [set residents residents - 1]
+            set location next-location
+            ;    ask location [set residents residents + 1]
+            ifelse not member? location last-locations [ ; Last visited node will be put in the last position
+              set last-locations (lput location last-locations)
+            ][
+              set last-locations (lput location (remove location last-locations))
+            ]
           ]
+
+
         ]
-        set flow-counter flow-counter - 1
       ]
+      set flow-counter flow-counter - 1
     ]
   ]
+
 end
+
+;to violent-advance
+;  ifelse distance next-location < distance location [ ; The agent has reached next-location
+;;    ask location [set residents residents - 1]
+;    set location next-location
+;;    ask location [set residents residents + 1]
+;    ifelse not member? location last-locations [ ; Last visited node will be put in the last position
+;      set last-locations (lput location last-locations)
+;    ][
+;      set last-locations (lput location (remove location last-locations))
+;    ]
+;  ][
+;    ask (link ([who] of location) ([who] of next-location) ) [
+;      if flow-counter > 0 [
+;        ask myself [
+;          if [capacity > residents] of next-location [
+;            face next-location
+;            let dist-aux distance next-location
+;            ifelse speed > dist-aux [fd dist-aux][fd speed]
+;
+;          ]
+;        ]
+;        set flow-counter flow-counter - 1
+;      ]
+;    ]
+;  ]
+;end
 
 to attack-target [#target]
   if detected = 0 [
@@ -513,6 +545,30 @@ to attacker-next-location
   )
 end
 
+;to attacker-next-location
+;  let destinations ([reacheables] of location)
+;  let ll last-locations
+;  (ifelse
+;    any? destinations with [residents - hidden-places > 0][
+;      set next-location one-of destinations with [residents - hidden-places > 0]
+;    ]
+;    any? destinations with [not (member? self ll)] [
+;      set next-location one-of destinations with [not (member? self ll)]
+;    ]
+;    true [
+;      foreach last-locations [
+;        x ->
+;        ask x [
+;          if member? x destinations [
+;            ask myself [ set next-location x ]
+;            stop
+;          ]
+;        ]
+;      ]
+;    ]
+;  )
+;end
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                                             ;;
 ;;****************************************  PEACEFULS  ****************************************;;
@@ -568,14 +624,14 @@ end
 to peaceful-desire
   if not in-secure-room? and not hidden and percived-risk > 0 [
     (ifelse
-      secure-exit?        [set state "reaching-exit"]
-      in-panic > 0.5      [set state "in-panic"]
-      p-timer > 0         [set state "waiting"]
+      secure-exit?        [set state "reaching-exit" ]
+      in-panic > 0.5      [set state "in-panic" ]
+      p-timer > 0         [set state "waiting" ]
       any-violent?        [set state "avoiding-violent"]
-      congested-path?     [set state "avoiding-crowd"]
-      secure-route? route [set state "following-route"]
+      congested-path?     [set state "avoiding-crowd" ]
+      secure-route? route [set state "following-route" ]
       app-pack?           [set state "asking-app"]
-      true                [set state "running-away"])
+      true                [set state "running-away" ] )
   ]
 end
 
@@ -628,45 +684,86 @@ end
 
 to to-wait
   let loc-aux location
-  ifelse any? violents with [ location = loc-aux ] [
-    avoid-violent
-  ][
-    set p-timer p-timer - 1
-  ]
+  (ifelse
+    any? violents with [ location = loc-aux ] [
+      set p-timer 0
+      avoid-violent]
+    better-location? [
+      let n-aux bad-area
+      set next-location max-one-of ([reacheables] of location) [distance n-aux]
+      face next-location
+      advance
+      set p-timer p-timer - 1
+    ]
+    true [
+      set p-timer p-timer - 1 ])
+end
+
+to-report better-location?
+  let dist-aux distance bad-area
+  let n-aux bad-area
+  let bet-loc one-of ([reacheables] of location) with [distance n-aux > dist-aux]
+  if bet-loc != nobody [report true]
+  report false
 end
 
 to avoid-violent
   stop-hidden
-  carefully [
-    let v-aux min-one-of violents [distance myself]
-    let n-aux [location] of v-aux
-    set speed ( base-speed + ( fuzzy:evaluation-of close-to-me (distance v-aux) ) )
+  ;carefully [
+;    show who
+;    let loc-aux location
+;    let v-aux min-one-of violents with [ location = loc-aux or member? location ([visibles] of loc-aux) ] [distance myself]
+;    let n-aux [location] of v-aux
+    set speed ( base-speed + ( fuzzy:evaluation-of close-to-me (distance bad-area) ) )
 
     (ifelse
-      must-I-hide?        [hide]
-      must-I-fight?       [fight]
-      [attacker?] of location = 1 [
-        if route = [] [set route path_to one-of exit-nodes]
-        follow-route
+    must-I-hide?        [ hide]
+    must-I-fight?       [ fight]
+    [attacker?] of location = 1 [
+      if route = [] [set route path_to one-of exit-nodes]
+      follow-route
+    ]
+    [attacker?] of next-location = 1 [
+      set next-location location
+      face next-location
+      advance
+    ]
+    member? bad-area [visibles] of location [
+      if not secure-route? route [
+        set route path_to one-of (turtle-set location (best-visibles bad-area))
       ]
-      [attacker?] of next-location = 1 [
-        set next-location location
-        face next-location
-        advance
-      ]
-      member? n-aux [visibles] of location [
-        if not secure-route? route [
-          set route path_to best-visible n-aux
-        ]
-        follow-route
-        if not empty? route and location = last route [ set p-timer 4 ]
-      ])
-  ][ show "All violents are dead" ]
+      follow-route
+    ]
+    true [show "tru"]
+    )
+  ;][ show "All violents are dead" ]
 end
 
+to-report best-visibles [#bad-node]
+  let area   [floor id] of location
+  let area-v [floor id] of #bad-node
+  let module 0
+  ifelse area > area-v [ set module area mod area-v ][ set module area-v mod area ]
+
+  ifelse module != 0 [
+    let dest ( ([visibles] of location) with [ (max (list (floor id) area)) mod (min (list (floor id) area)) = 0 ]  )
+    ;let dest (max-one-of ([visibles] of location) with [ floor id = area ] [distance #bad-node] )
+    ifelse dest != nobody [ report dest ][ report (list location) ]
+  ][
+    let visib-aux (([visibles] of location) with [capacity - residents > 1])
+    let res visib-aux with [ not in-the-way? ([location] of myself) (node who) #bad-node ]
+    report res
+  ]
+end
+
+
 to-report best-visible [#bad-node]
-  let area [floor id] of location
-  ifelse [floor id] of #bad-node != area [
+  let area   [floor id] of location
+  let area-v [floor id] of #bad-node
+  let module 0
+  ifelse area > area-v [ set module area mod area-v ][ set module area-v mod area ]
+
+  ifelse module != 0 [
     let dest (max-one-of ([visibles] of location) with [floor id = area] [distance #bad-node] )
     ifelse dest != nobody [ report dest ][ report location ]
   ][
@@ -674,9 +771,24 @@ to-report best-visible [#bad-node]
     foreach visib-aux [ n ->
       if not in-the-way? location n #bad-node [ report n]
     ]
-    report one-of exit-nodes
+;    report one-of exit-nodes
+    report location
   ]
 end
+
+;to-report best-visible [#bad-node]
+;  let area [floor id] of location
+;  ifelse [floor id] of #bad-node != area [
+;    let dest (max-one-of ([visibles] of location) with [floor id = area] [distance #bad-node] )
+;    ifelse dest != nobody [ report dest ][ report location ]
+;  ][
+;    let visib-aux reverse ( sort-on [distance #bad-node] (([visibles] of location) with [capacity - residents > 1]) )
+;    foreach visib-aux [ n ->
+;      if not in-the-way? location n #bad-node [ report n]
+;    ]
+;    report one-of exit-nodes
+;  ]
+;end
 
 to-report in-the-way? [#p1 #p2 #bad-node]
   let x1 [xcor] of #p1
@@ -731,7 +843,8 @@ to run-away
     if route = [] [set route path_to (min-one-of nodes with [member? (node who) exit-nodes] [distance myself] )]
     follow-route
   ][
-    if location = next-location or [capacity - residents] of next-location <= 0 [search-intuitive-node]
+;    if location = next-location or [capacity - residents] of next-location <= 0 [search-intuitive-node]
+    if location = next-location [search-intuitive-node]
     advance
   ]
 end
@@ -770,8 +883,13 @@ end
 to keep-working
   if random-float 1 < 0.007 or distance location >= speed[
     if location = next-location [
-      set next-location (one-of ([reacheables] of location) with [capacity - residents > 1] )
-      face next-location
+;      carefully[
+      let nl-aux (one-of ([reacheables] of location) with [capacity - residents > 1] )
+      if nl-aux != nobody [
+        set next-location nl-aux
+        face next-location
+      ]
+ ;     ][ show "There is no node with capacity - residents > 1"]
     ]
     advance
   ]
@@ -806,18 +924,27 @@ to irrational-behaviour
       follow-route
     ]
     any? violents with [next-location = [location] of myself][
-      set next-location (min-one-of ([reacheables] of location) with [capacity - residents > 1] [attacker?]  )
-      face next-location
-      advance
+  ;    carefully[
+      let nl-aux (min-one-of ([reacheables] of location) with [capacity - residents > 1] [attacker?]  )
+      if nl-aux != nobody [
+        set next-location nl-aux
+        face next-location
+        advance
+      ]
+ ;     ][show "All nodes are collapsed"]
     ]
     any? (peacefuls with [location = [location] of myself and state != "in-panic"]) [
-      set next-location ( [next-location] of one-of (peacefuls with [location = [location] of myself and state != "in-panic"]) )
-      face next-location
-      advance
+      let nl-aux ( [next-location] of one-of (peacefuls with [location = [location] of myself and state != "in-panic"]) )
+      if nl-aux != nobody [
+        set next-location nl-aux
+        face next-location
+        advance
+      ]
     ]
     location = next-location [
-      carefully [
-        set next-location (one-of ([reacheables] of location) with [capacity - residents > 1] )
+      let nl-aux (one-of ([reacheables] of location) with [capacity - residents > 1] )
+      ifelse nl-aux != nobody [
+        set next-location nl-aux
         face next-location
       ][
         set next-location location
@@ -865,13 +992,18 @@ to-report must-I-fight?
 end
 
 to-report congested-path?
-  if location = next-location [report false]
+;  if next-location = nobody or location = next-location [report false]
   report [residents * 1.1] of next-location > [capacity] of next-location
 end
 
 to-report any-violent?
   if secure-route? route [report false]
-  report any? (turtle-set location ([visibles] of location)) with [attacker? = 1]
+  let bad-node min-one-of (turtle-set location ([visibles] of location)) with [attacker? = 1][distance myself]
+  if bad-node != nobody[
+    set bad-area bad-node
+    report true
+  ]
+  report false
 end
 
 to-report in-secure-room?
@@ -943,26 +1075,44 @@ to update-location
 end
 
 to advance ; Go to next-node
-  ifelse distance next-location < distance location [ ; The agent has reached next-location
-    update-location
-  ][
-    if location != next-location [
-      update-running-people
-      update-flow
+  carefully [
+    ifelse distance next-location < distance location [ ; The agent has reached next-location
+      update-location
+    ][
+      if location != next-location [
+        update-running-people
+        update-flow
+      ]
     ]
+  ][
+    show "next-location = nobody"
   ]
 end
 
 to follow-route
   ifelse location = next-location [
-    ifelse (not member? location route) or location = last route  [
-      set route []
-    ][
-      let loc-aux location
-      let pos-aux (position loc-aux route)
-      set next-location ( item (pos-aux + 1) route)
-      face next-location
-    ]
+    (ifelse
+      (not member? location route or not member? next-location route) [
+        let nl-aux min-one-of ([visibles] of location) with [member? (node who) ([route] of myself)] [distance myself]
+        ifelse nl-aux != nobody[
+          let route-aux (path_to nl-aux)
+          set route (sentence route-aux (sublist route ((position nl-aux route) + 1) (length route) ) )
+        ][
+          set route []
+          set next-location location
+        ]
+
+      ]
+      location = last route [
+        set p-timer (floor random-normal 5 1)
+        set route []
+      ]
+      true [
+        let loc-aux location
+        let pos-aux (position loc-aux route)
+        set next-location ( item (pos-aux + 1) route)
+        face next-location
+    ])
   ][
     ifelse p-type = "violent" [violent-advance][advance]
   ]
@@ -1277,10 +1427,10 @@ ticks
 30.0
 
 BUTTON
-178
-552
-233
-587
+183
+474
+238
+509
 NIL
 setup
 NIL
@@ -1302,7 +1452,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-170.0
+600.0
 1
 1
 NIL
@@ -1317,17 +1467,17 @@ num-violents
 num-violents
 0
 10
-2.0
+1.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-237
-552
-294
-587
+242
+474
+299
+509
 NIL
 go
 T
@@ -1341,9 +1491,9 @@ NIL
 1
 
 MONITOR
-670
+566
 54
-768
+664
 99
 not-app: Red
 not-app-rescued
@@ -1352,9 +1502,9 @@ not-app-rescued
 11
 
 MONITOR
-975
+871
 54
-1072
+968
 99
 NIL
 not-app-killed
@@ -1371,16 +1521,16 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.15
+0.5
 0.05
 1
 NIL
 HORIZONTAL
 
 MONITOR
-670
+566
 9
-768
+664
 54
 app: Blue
 app-rescued
@@ -1389,9 +1539,9 @@ app-rescued
 11
 
 MONITOR
-975
+871
 9
-1072
+968
 54
 NIL
 app-killed
@@ -1408,7 +1558,7 @@ attackers-efectivity
 attackers-efectivity
 0
 1
-0.4
+0.3
 0.05
 1
 NIL
@@ -1423,7 +1573,7 @@ max-iter
 max-iter
 0
 1000
-0.0
+300.0
 5
 1
 NIL
@@ -1452,10 +1602,10 @@ app-info?
 -1000
 
 BUTTON
-178
-590
-233
-625
+183
+511
+238
+546
 once
 go
 NIL
@@ -1484,9 +1634,9 @@ NIL
 HORIZONTAL
 
 MONITOR
-670
+566
 98
-768
+664
 143
 total-rescued
 app-rescued + not-app-rescued
@@ -1495,9 +1645,9 @@ app-rescued + not-app-rescued
 11
 
 MONITOR
-975
+871
 99
-1072
+968
 144
 total-killed
 app-killed + not-app-killed
@@ -1521,9 +1671,9 @@ NIL
 HORIZONTAL
 
 PLOT
-467
+364
 9
-662
+559
 144
 not alerted people
 tick
@@ -1540,9 +1690,9 @@ PENS
 "not-alerted-not-app" 1.0 0 -2674135 true "" "if not-alerted-not-app > 0 or not-alerted-app > 0 [plot not-alerted-not-app]\n"
 
 PLOT
-770
+666
 9
-965
+861
 144
 rescued
 NIL
@@ -1559,9 +1709,9 @@ PENS
 "pen-1" 1.0 0 -13345367 true "" "plot 100 * app-rescued / total-with-app"
 
 PLOT
-1074
+970
 9
-1269
+1165
 144
 killed
 NIL
@@ -1680,10 +1830,10 @@ TEXTBOX
 1
 
 MONITOR
-365
-98
-462
-143
+195
+227
+340
+272
 violents-killed
 violents-killed
 0
@@ -1706,9 +1856,9 @@ NIL
 HORIZONTAL
 
 PLOT
-1375
+1271
 9
-1572
+1468
 144
 accidents
 NIL
@@ -1725,9 +1875,9 @@ PENS
 "pen-1" 1.0 0 -13345367 true "" "plot 100 * app-accident / total-with-app"
 
 MONITOR
-1278
+1175
 9
-1375
+1272
 54
 app: Blue
 app-accident
@@ -1736,9 +1886,9 @@ app-accident
 11
 
 MONITOR
-1278
+1175
 55
-1375
+1272
 100
 not-app: Red
 not-app-accident
@@ -1747,9 +1897,9 @@ not-app-accident
 11
 
 MONITOR
-1278
+1175
 100
-1375
+1272
 145
 accidents
 app-accident + not-app-accident
@@ -1764,7 +1914,7 @@ SWITCH
 297
 first-blood
 first-blood
-0
+1
 1
 -1000
 
@@ -1790,10 +1940,10 @@ crowd-running
 -1000
 
 SLIDER
-24
-333
-162
-366
+23
+334
+161
+367
 what-is-a-crowd?
 what-is-a-crowd?
 1
@@ -1805,23 +1955,23 @@ NIL
 HORIZONTAL
 
 INPUTBOX
-179
-427
-344
-487
+184
+349
+349
+409
 nodes-file
-nodes.csv
+nodesP.csv
 1
 0
 String
 
 INPUTBOX
-179
-487
-344
-547
+184
+409
+349
+469
 edges-file
-edges.csv
+edgesP.csv
 1
 0
 String
@@ -2173,37 +2323,78 @@ NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="peace-250-500" repetitions="100" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <metric>app-rescued</metric>
-    <metric>not-app-rescued</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-killed</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident</metric>
+    <enumeratedValueSet variable="app-info?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-peacefuls">
+      <value value="250"/>
+      <value value="500"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="peace500-vi1-app" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
     <metric>app-killed</metric>
     <metric>not-app-killed</metric>
-    <metric>not-alerted</metric>
-    <enumeratedValueSet variable="num-violents">
-      <value value="1"/>
+    <metric>app-accident</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident + not-app-accident</metric>
+  </experiment>
+  <experiment name="peace500-v1-not-app" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>app-killed</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident + not-app-accident</metric>
+  </experiment>
+  <experiment name="peace200-v1-not-app" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>app-killed</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident + not-app-accident</metric>
+  </experiment>
+  <experiment name="peace600-v1-app" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>app-killed</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident + not-app-accident</metric>
+    <enumeratedValueSet variable="num-peacefuls">
+      <value value="600"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="app-info?">
       <value value="true"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="shooting?">
+  </experiment>
+  <experiment name="peace600-v1-not-app" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>app-killed</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident + not-app-accident</metric>
+    <enumeratedValueSet variable="num-peacefuls">
+      <value value="600"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-info?">
       <value value="false"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="max-iter">
-      <value value="300"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="mean-speed">
-      <value value="1.2"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="attackers-efectivity">
-      <value value="0.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="num-peacefuls">
-      <value value="150"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="app-percentage" first="0" step="10" last="100"/>
-    <steppedValueSet variable="leaders-percentage" first="0" step="0.1" last="1"/>
   </experiment>
 </experiments>
 @#$#@#$#@
