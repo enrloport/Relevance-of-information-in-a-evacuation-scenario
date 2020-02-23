@@ -3,8 +3,7 @@ Multiagent Evacuation Scenario in NetLogo.
 
 This is a multiagent evacuation simulation for NetLogo.
 
-The first step is to create the nodes and edges files.
-Is very important to keep the structure of this files. And they must be specified in the main screen.
+Is very important to keep the structure of nodes and edges files. And they must be specified in the main screen.
 
 Netlogo will generate the graph by reading this csv files in the set-up step.
 
