@@ -2,6 +2,7 @@ extensions [fuzzy nw csv]
 
 globals [
   exit-nodes
+  secure-rooms
   leaders
   peacefuls
   violents
@@ -62,7 +63,7 @@ nodes-own [
   bomb-sound?
   scream?
   running-people?
-  corpses?          ; If an agent dies in the node, the corpse will lay in the floor for the rest of the simulation
+  corpses?          ; If an agent dies in the node, the corpse will lay in the floor for the rest of the simulation as a sign of danger
   lock?
   leaders?
   police?
@@ -187,8 +188,8 @@ to setup
         set node1       (item 0 row)
         set node2       (item 1 row)
         set dist        (item 2 row)
-        set visibility  (item 3 row)
-        set sound       (item 4 row)
+        set visibility  (item 3 row) * visibility-mod
+        set sound       (item 4 row) * sound-mod
         set transitable (item 5 row)
         set lockable?   (item 6 row)
         set flow        (item 7 row)
@@ -253,24 +254,28 @@ to setup
     ask person t-agent [set size 2]
   ]
 
+  let positions (read-from-string initial-positions)
+
   ;; CREATE VIOLENTS
   create-people num-violents [
     set shape             "person"
     set p-type            "violent"
     set speed             attackers-speed
-    set location          one-of nodes
-    set next-location     location
     set detected          0
     set color             17
     set size              1.5
     set route             []
     set last-locations    []
     set efectivity        attackers-efectivity
+    set location          min-one-of nodes with [member? who positions][attacker?]
+    set next-location     location
     move-to location
+    ask location          [set attacker? 1]
   ]
 
   ;; CREATE TURTLE SETS
   set exit-nodes          turtle-set (nodes  with [id - floor id < 0.099])
+  set secure-rooms        turtle-set (nodes  with [lock? > 0])
   set violents            turtle-set (people with [p-type = "violent"] )
   set peacefuls           turtle-set (people with [p-type = "peaceful"])
   set leaders             turtle-set (people with [leadership > 0])
@@ -403,8 +408,7 @@ end
 to find-target
   set label "ft"
   let loc-aux location
-  ; The attacker will search for the target agent first
-  ifelse target-agent > -1 and person t-agent != nobody [
+  ifelse target-agent > -1 and person t-agent != nobody [  ; The attacker will search for the target agent first
     let target-location ([location] of person t-agent)
     ifelse loc-aux = target-location [
       ifelse shooting? [shoot-target person t-agent][attack-target person t-agent]
@@ -532,33 +536,32 @@ to shoot-target [#target]
     set detected 1
     set color red
   ]
-  ask location [
-    set attacker-sound? attacker-sound? + 0.5 ;TODO shoot-noise
-    ask my-links with [sound > 0] [
-      let s-aux sound
-      ask other-end [set attacker-sound? attacker-sound? + 0.5 * s-aux]
-    ]
-  ]
+  update-noise
   if random-float 1 < efectivity [
     ask #target [ died-agent "shoot" ]
   ]
 end
 
+to update-noise
+  ask location [
+    set attacker-sound? attacker-sound? + shoot-noise
+    ask my-links with [sound > 0] [
+      let s-aux sound
+      ask other-end [set attacker-sound? attacker-sound? + shoot-noise * s-aux]
+    ]
+  ]
+end
+
 to shoot [#visibles]
-;  let all-reacheables ( turtle-set location (current-reacheables) )
   if any? peacefuls with [visible-target? and member? location current-visibles][
     if detected = 0 [
       set detected 1
       set color red
     ]
-    ask location [
-      set attacker-sound? attacker-sound? + 0.5
-      ask my-links with [sound > 0] [
-        let s-aux sound
-        ask other-end [set attacker-sound? attacker-sound? + 0.5 * s-aux]
-      ]
+    update-noise
+    if random-float 1 < efectivity [
+      ask one-of peacefuls with [member? location #visibles][ died-agent "shoot" ]
     ]
-    ask one-of peacefuls with [member? location #visibles][ died-agent "shoot" ]
   ]
 end
 
@@ -763,7 +766,7 @@ end
 
 to avoid-violent
   stop-hidden
-  ;carefully [
+  carefully [
 
     set speed ( base-speed + ( fuzzy:evaluation-of close-to-me (distance bad-area) ) )
 
@@ -788,7 +791,7 @@ to avoid-violent
       ]
       true [set bad-area nobody]
     )
- ; ][ show "All violents are dead" show bad-area]
+  ][ show "All violents are dead" show bad-area]
 end
 
 to-report in-the-same-area? [#loc #bad]
@@ -831,7 +834,6 @@ to-report best-visible [#bad-node]
     foreach visib-aux [ n ->
       if not in-the-way? location n #bad-node [ report n]
     ]
-;    report one-of exit-nodes
     report location
   ]
 end
@@ -861,12 +863,15 @@ to ask-app ;; TODO
         ]
       ]
     ]
-    app-mode = 2 [ ; TODO
+    app-mode = 2 [ ; The app gives to the agent the closest option (secure room or exit)
+      let dests reverse (sort-on [distance myself] (turtle-set exit-nodes secure-rooms) )
       set route []
-      ifelse (([lock?] of location) = 1 and (not violents-in-my-room)) or ([hidden-places - hidden-people] of location > 0)[
-        set state "hidden"
-      ][
-        set state "running-away"
+      foreach dests [ n ->
+        let route-aux (path_to n)
+        if secure-route? route-aux [
+          set route route-aux
+          stop
+        ]
       ]
   ])
 end
@@ -1190,11 +1195,6 @@ end
 
 to update-flow
   let link-aux (link ([who] of location) ([who] of next-location) )
-  ;  if ([transitable] of link-aux) = 0 [
-  ;    set next-location location
-  ;    face next-location
-  ;  ]
-  ;set link-aux (link ([who] of location) ([who] of next-location) )
 
   ask link-aux [
     if flow-counter >= 1 [
@@ -1482,10 +1482,10 @@ ticks
 30.0
 
 BUTTON
-184
-394
-239
-429
+186
+440
+241
+475
 NIL
 setup
 NIL
@@ -1499,40 +1499,40 @@ NIL
 1
 
 SLIDER
-195
-107
-340
-140
+197
+154
+342
+187
 num-peacefuls
 num-peacefuls
 1
 1000
-500.0
+1000.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-17
-108
-161
-141
+19
+155
+163
+188
 num-violents
 num-violents
 0
 10
-1.0
+2.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-294
-394
-351
-429
+296
+440
+353
+475
 NIL
 go
 T
@@ -1568,10 +1568,10 @@ not-app-killed
 11
 
 SLIDER
-195
-140
-340
-173
+197
+187
+342
+220
 leaders-percentage
 leaders-percentage
 0.0
@@ -1605,10 +1605,10 @@ app-killed
 11
 
 SLIDER
-17
-209
-161
-242
+20
+290
+164
+323
 attackers-efectivity
 attackers-efectivity
 0
@@ -1620,10 +1620,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-185
-357
-350
-390
+187
+404
+352
+437
 max-iter
 max-iter
 0
@@ -1635,21 +1635,21 @@ NIL
 HORIZONTAL
 
 SWITCH
-17
-143
-161
-176
+19
+190
+163
+223
 shooting?
 shooting?
-1
+0
 1
 -1000
 
 SWITCH
-17
-545
-156
-578
+21
+638
+160
+671
 app-info?
 app-info?
 0
@@ -1657,10 +1657,10 @@ app-info?
 -1000
 
 BUTTON
-239
-394
-294
-429
+240
+440
+295
+475
 once
 go
 NIL
@@ -1674,15 +1674,15 @@ NIL
 1
 
 SLIDER
-195
-173
-340
-206
+197
+220
+342
+253
 app-percentage
 app-percentage
 0
 100
-50.0
+100.0
 1
 1
 NIL
@@ -1711,10 +1711,10 @@ app-killed + not-app-killed
 11
 
 SLIDER
-195
-272
-340
-305
+197
+319
+342
+352
 mean-speed
 mean-speed
 1
@@ -1783,10 +1783,10 @@ PENS
 "pen-1" 1.0 0 -2674135 true "" "plot 100 * not-app-killed / total-without-app"
 
 SLIDER
-195
-305
-340
-338
+197
+352
+342
+385
 max-speed-deviation
 max-speed-deviation
 0
@@ -1798,30 +1798,30 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-205
-90
-348
-109
+207
+137
+350
+156
 PEACEFULS PARAMS
 12
 0.0
 1
 
 TEXTBOX
-34
-88
-180
-107
+36
+135
+182
+154
 VIOLENTS PARAMS
 12
 0.0
 1
 
 SLIDER
-17
-243
-161
-276
+20
+324
+164
+357
 attackers-speed
 attackers-speed
 0.1
@@ -1833,10 +1833,10 @@ NIL
 HORIZONTAL
 
 INPUTBOX
-89
-277
-161
-338
+92
+416
+164
+477
 target-agent
 -1.0
 1
@@ -1844,10 +1844,10 @@ target-agent
 Number
 
 INPUTBOX
-17
-277
-89
-338
+20
+416
+92
+477
 target-node
 -1.0
 1
@@ -1855,20 +1855,20 @@ target-node
 Number
 
 TEXTBOX
-117
-447
-250
-466
+121
+540
+254
+559
 APP PARAMS
 12
 0.0
 1
 
 MONITOR
-17
-338
-161
-383
+20
+478
+164
+523
 violents-killed
 violents-killed
 0
@@ -1876,10 +1876,10 @@ violents-killed
 11
 
 SLIDER
-195
-239
-340
-272
+197
+286
+342
+319
 not-alerted-speed
 not-alerted-speed
 0
@@ -1943,10 +1943,10 @@ app-accident + not-app-accident
 11
 
 SWITCH
-17
-468
-155
-501
+21
+560
+159
+593
 first-blood
 first-blood
 0
@@ -1954,20 +1954,20 @@ first-blood
 -1000
 
 TEXTBOX
-164
-474
-229
-494
+169
+566
+234
+586
 Triggers
 12
 0.0
 1
 
 SWITCH
-17
-501
-155
-534
+21
+594
+159
+627
 crowd-running
 crowd-running
 0
@@ -1975,10 +1975,10 @@ crowd-running
 -1000
 
 SLIDER
-156
-501
-295
-534
+160
+594
+299
+627
 what-is-a-crowd?
 what-is-a-crowd?
 1
@@ -2012,10 +2012,10 @@ edgesP.csv
 String
 
 SLIDER
-17
-176
-161
-209
+20
+257
+164
+290
 attack-prob
 attack-prob
 0
@@ -2027,26 +2027,26 @@ NIL
 HORIZONTAL
 
 SLIDER
-157
-545
-295
-578
+161
+638
+299
+671
 app-mode
 app-mode
 0
 2
-0.0
+2.0
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-53
-588
-350
-642
-0 = The app will recomend nearest exit\n1 = The app will recomend a secure-room\n2 = The app will recomend to stay in the room
+23
+680
+318
+740
+0 = The app will recomend nearest exit\n1 = The app will recomend a secure-room\n2 = The app will recomend the closest option\n                                   (secure-room or exit)
 12
 0.0
 1
@@ -2114,15 +2114,71 @@ PENS
 "pen-1" 1.0 0 -2674135 true "" "plot 100 * not-app-in-secure-room / total-without-app"
 
 SLIDER
-195
-206
-340
-239
+197
+253
+342
+286
 defense-prob
 defense-prob
 0
 1
 0.1
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+16
+77
+186
+110
+visibility-mod
+visibility-mod
+0
+1
+1.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+190
+77
+358
+110
+sound-mod
+sound-mod
+0
+1
+1.0
+0.01
+1
+NIL
+HORIZONTAL
+
+INPUTBOX
+20
+357
+164
+417
+initial-positions
+[1 2 3]
+1
+0
+String
+
+SLIDER
+20
+224
+165
+258
+shoot-noise
+shoot-noise
+0
+1
+0.5
 0.01
 1
 NIL
@@ -2470,7 +2526,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
