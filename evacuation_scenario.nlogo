@@ -370,9 +370,6 @@ to avoid-police
   ; TO DO
 end
 
-to-report visible-target?
-  report not hidden and not in-secure-room?
-end
 
 to be-aggressive
   ;set label "ba"
@@ -431,6 +428,7 @@ to find-target
   ]
 end
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; TODO contar los ticks para las gráficas
 
 
 to violent-advance
@@ -542,15 +540,6 @@ to shoot-target [#target]
   ]
 end
 
-to update-noise
-  ask location [
-    set attacker-sound? attacker-sound? + shoot-noise
-    ask my-links with [sound > 0] [
-      let s-aux sound
-      ask other-end [set attacker-sound? attacker-sound? + shoot-noise * s-aux]
-    ]
-  ]
-end
 
 to shoot [#visibles]
   if any? peacefuls with [visible-target? and member? location current-visibles][
@@ -561,6 +550,17 @@ to shoot [#visibles]
     update-noise
     if random-float 1 < efectivity [
       ask one-of peacefuls with [member? location #visibles][ died-agent "shoot" ]
+    ]
+  ]
+end
+
+
+to update-noise
+  ask location [
+    set attacker-sound? attacker-sound? + shoot-noise
+    ask my-links with [sound > 0] [
+      let s-aux sound
+      ask other-end [set attacker-sound? attacker-sound? + shoot-noise * s-aux]
     ]
   ]
 end
@@ -722,15 +722,13 @@ to to-wait
   )
 end
 
-to-report lockable-room? [#l]
-  report [lock?] of #l > 0
-end
-
 to to-stay
   stop-hidden
   let loc-aux location
   (ifelse
     ([attacker?] of location) = 1 [ ; TODO: si no hay atacante en mi area/sala
+
+;    any? reachea [ ; TODO: si no hay atacante en mi area/sala
       set state "avoiding-violent"
     ]
     any? current-reacheables with [attacker? = 1][
@@ -771,24 +769,28 @@ to avoid-violent
     set speed ( base-speed + ( fuzzy:evaluation-of close-to-me (distance bad-area) ) )
 
     (ifelse
-      must-I-hide?                                            [ hide]
-      must-I-lock?                                            [ to-lock]
-      must-I-fight? and random-float 1 < defense-prob         [ fight]
+      must-I-hide?                                      [ hide ]
+      must-I-lock?                                      [ to-lock ]
+      must-I-fight? and random-float 1 < defense-prob   [ fight ]
+
       [attacker?] of location = 1 [
         if route = [] [set route path_to one-of exit-nodes]
         follow-route
       ]
+
       [attacker?] of next-location = 1 [
         set next-location location
         face next-location
         advance
       ]
+
       member? bad-area [visibles] of location [
         if not secure-route? route [
           set route path_to one-of (turtle-set location (best-visibles bad-area))
         ]
         follow-route
       ]
+
       true [set bad-area nobody]
     )
   ][ show "All violents are dead" show bad-area]
@@ -819,7 +821,6 @@ to-report best-visibles [#bad-node]
   ]
 end
 
-
 to-report best-visible [#bad-node]
   let area   [floor id] of location
   let area-v [floor id] of #bad-node
@@ -836,44 +837,6 @@ to-report best-visible [#bad-node]
     ]
     report location
   ]
-end
-
-to-report in-the-way? [#p1 #p2 #bad-node]
-  let x1 [xcor] of #p1
-  let y1 [ycor] of #p1
-  let x2 [xcor] of #p2
-  let y2 [ycor] of #p2
-  let x  [xcor] of #bad-node
-  let y  [ycor] of #bad-node
-  report ( (x - x1)*(y2 - y1) ) = ( (x2 - x1)*(y - y1) )
-end
-
-to ask-app ;; TODO
-  (ifelse
-    app-mode = 0 [ ; The app gives to the agent a path to evacuate
-      set route exit-path
-      set state "following-route"
-    ]
-    app-mode = 1 [ ; The app gives to the agent a path to a secure-room
-      if not in-secure-room?[
-        let path-aux secure-room-path
-        if path-aux != nobody [
-          set route path-aux
-          set state "following-route"
-        ]
-      ]
-    ]
-    app-mode = 2 [ ; The app gives to the agent the closest option (secure room or exit)
-      let dests reverse (sort-on [distance myself] (turtle-set exit-nodes secure-rooms) )
-      set route []
-      foreach dests [ n ->
-        let route-aux (path_to n)
-        if secure-route? route-aux [
-          set route route-aux
-          stop
-        ]
-      ]
-  ])
 end
 
 to follow-leader
@@ -963,18 +926,18 @@ to stop-hidden
   ]
 end
 
-;to to-unlock
-;  show location
-;  ask location [
-;    ask my-links with [lockable? > 0] [
-;      if locked? = 1 [
-;        set transitable 1
-;        set visibility 1
-;        set locked? 0
-;      ]
-;    ]
-;  ]
-;end
+to to-unlock
+  show location
+  ask location [
+    ask my-links with [lockable? > 0] [
+      if locked? = 1 [
+        set transitable 1
+        set visibility 1
+        set locked? 0
+      ]
+    ]
+  ]
+end
 
 to irrational-behaviour
   stop-hidden
@@ -1022,6 +985,24 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+to-report in-the-way? [#p1 #p2 #bad-node]
+  let x1 [xcor] of #p1
+  let y1 [ycor] of #p1
+  let x2 [xcor] of #p2
+  let y2 [ycor] of #p2
+  let x  [xcor] of #bad-node
+  let y  [ycor] of #bad-node
+  report ( (x - x1)*(y2 - y1) ) = ( (x2 - x1)*(y - y1) )
+end
+
+to-report visible-target?
+  report not hidden and not in-secure-room?
+end
+
+to-report lockable-room? [#l]
+  report [lock?] of #l > 0
+end
+
 to-report any-target?
   report target-node > 0 or (target-agent >= num-nodes and (person t-agent) != nobody)
 end
@@ -1043,13 +1024,12 @@ to-report app-pack?
 end
 
 to-report must-I-hide?
-  report place-to-hide?
+  ifelse ([hidden-places - hidden-people] of location)  > 0 [report true][report false]
 end
 
 
 to-report must-I-lock?
   let floor-aux ([floor id] of location)
-;  report any? violents with[ member? location ([reacheables] of loc-aux) ] and place-to-hide?
   report (not in-the-same-area? location bad-area) and lockable-room? location
 end
 
@@ -1076,17 +1056,6 @@ to-report in-secure-room?
   report [lock?] of location > 0 and (any? ([links] of location) with [lockable? + locked? = 2] )
 end
 
-to-report violents-in-my-room
-  let loc-aux ( [floor id] of location)
-  ifelse any? violents with [ [floor id] of location = loc-aux ] [report true] [report false]
-end
-
-
-to-report violents-near
-  let neighs ([reacheables] of location)
-  ifelse any? violents with [ member? location neighs ] [report true] [report false]
-end
-
 to-report number-of-signals
   let res 0
   let signs (list attacker-sighted fire-sighted bomb-sighted attacker-heard fire-heard bomb-heard scream-heard corpse-sighted running-people )
@@ -1094,13 +1063,17 @@ to-report number-of-signals
   report res
 end
 
-to-report place-to-hide?
-  ifelse ([hidden-places - hidden-people] of location)  > 0 [report true][report false]
-end
-
 to-report enough-people? [#loc]
   report ( ([residents] of location) > ( 11 * count (violents with [#loc = location]) ) )
 end
+
+
+to casualty?
+  compute-accident-prob ([density] of location ) (floor (speed * 100))
+  let acc-prob degree-of-consistency-R4 * ([capacity] of location) * 0.001 ; Mortal accident
+  if random-float 1 < acc-prob [died-agent "casualty"]
+end
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1251,11 +1224,6 @@ to leader-influence
     true             [set state "with-leader"])
 end
 
-to casualty?
-  compute-accident-prob ([density] of location ) (floor (speed * 100))
-  let acc-prob degree-of-consistency-R4 * ([capacity] of location) * 0.001 ; Mortal accident
-  if random-float 1 < acc-prob [died-agent "casualty"]
-end
 
 to died-agent [#cause]
   ask location [
@@ -1343,7 +1311,41 @@ to update-world
 
 end
 
-to-report app-trigger ;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;    APP FUNCTIONS    ;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+to ask-app
+  (ifelse
+    app-mode = 0 [ ; The app gives to the agent a path to evacuate
+      set route exit-path
+      set state "following-route"
+    ]
+    app-mode = 1 [ ; The app gives to the agent a path to a secure-room
+      if not in-secure-room?[
+        let path-aux secure-room-path
+        if path-aux != nobody [
+          set route path-aux
+          set state "following-route"
+        ]
+      ]
+    ]
+    app-mode = 2 [ ; The app gives to the agent the closest option (secure room or exit)
+      let dests reverse (sort-on [distance myself] (turtle-set exit-nodes secure-rooms) )
+      set route []
+      foreach dests [ n ->
+        let route-aux (path_to n)
+        if secure-route? route-aux [
+          set route route-aux
+          stop
+        ]
+      ]
+  ])
+end
+
+to-report app-trigger
   if first-blood and app-killed + not-app-killed > 0 [report true]
   if crowd-running and (count peacefuls with [speed > not-alerted-speed]) >= what-is-a-crowd? [report true]
   report false
@@ -1453,6 +1455,23 @@ end
 to-report all-my-signals
   report fire? + fire-sound? + attacker? + attacker-sound? + bomb? + bomb-sound? + corpses? + scream? + running-people?
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 370
@@ -1507,17 +1526,17 @@ num-peacefuls
 num-peacefuls
 1
 1000
-1000.0
+250.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-19
-155
-163
-188
+20
+156
+164
+189
 num-violents
 num-violents
 0
@@ -1576,7 +1595,7 @@ leaders-percentage
 leaders-percentage
 0.0
 1.0
-0.1
+0.2
 0.05
 1
 NIL
@@ -1606,9 +1625,9 @@ app-killed
 
 SLIDER
 20
-290
+288
 164
-323
+321
 attackers-efectivity
 attackers-efectivity
 0
@@ -1620,25 +1639,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-187
-404
-352
-437
+186
+405
+353
+438
 max-iter
 max-iter
 0
 1000
-0.0
+500.0
 5
 1
 NIL
 HORIZONTAL
 
 SWITCH
-19
-190
-163
-223
+20
+189
+164
+222
 shooting?
 shooting?
 0
@@ -1652,14 +1671,14 @@ SWITCH
 671
 app-info?
 app-info?
-0
+1
 1
 -1000
 
 BUTTON
-240
+241
 440
-295
+296
 475
 once
 go
@@ -1682,7 +1701,7 @@ app-percentage
 app-percentage
 0
 100
-100.0
+50.0
 1
 1
 NIL
@@ -1819,14 +1838,14 @@ VIOLENTS PARAMS
 
 SLIDER
 20
-324
+323
 164
-357
+356
 attackers-speed
 attackers-speed
 0.1
 2
-0.8
+0.5
 0.1
 1
 NIL
@@ -1834,9 +1853,9 @@ HORIZONTAL
 
 INPUTBOX
 92
-416
+415
 164
-477
+476
 target-agent
 -1.0
 1
@@ -1845,9 +1864,9 @@ Number
 
 INPUTBOX
 20
-416
+415
 92
-477
+476
 target-node
 -1.0
 1
@@ -1866,9 +1885,9 @@ APP PARAMS
 
 MONITOR
 20
-478
+477
 164
-523
+522
 violents-killed
 violents-killed
 0
@@ -1983,7 +2002,7 @@ what-is-a-crowd?
 what-is-a-crowd?
 1
 20
-15.0
+20.0
 1
 1
 NIL
@@ -2013,9 +2032,9 @@ String
 
 SLIDER
 20
-257
+256
 164
-290
+289
 attack-prob
 attack-prob
 0
@@ -2160,20 +2179,20 @@ HORIZONTAL
 
 INPUTBOX
 20
-357
+356
 164
-417
+416
 initial-positions
-[1 2 3]
+[0 73]
 1
 0
 String
 
 SLIDER
 20
-224
-165
-258
+223
+164
+256
 shoot-noise
 shoot-noise
 0
@@ -2526,7 +2545,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.0
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -2602,6 +2621,269 @@ NetLogo 6.1.0
     </enumeratedValueSet>
     <enumeratedValueSet variable="app-info?">
       <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="peace500-v2-app2" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>app-killed</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-in-secure-room</metric>
+    <metric>not-app-in-secure-room</metric>
+    <metric>app-killed + not-app-killed</metric>
+    <metric>app-accident + not-app-accident</metric>
+    <metric>app-in-secure-room + app-in-secure-room</metric>
+    <metric>app-rescued + not-app-rescued</metric>
+    <enumeratedValueSet variable="num-peacefuls">
+      <value value="300"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-info?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-mode">
+      <value value="2"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="peace500-v2-not-app" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>app-killed</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-in-secure-room</metric>
+    <metric>not-app-in-secure-room</metric>
+    <metric>app-killed + not-app-killed</metric>
+    <metric>app-accident + not-app-accident</metric>
+    <metric>app-in-secure-room + app-in-secure-room</metric>
+    <metric>app-rescued + not-app-rescued</metric>
+    <enumeratedValueSet variable="num-peacefuls">
+      <value value="300"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-info?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="p-150-600-v-2-app-on" repetitions="2" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>ticks</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-killed</metric>
+    <metric>app-killed + not-app-killed</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident + app-accident</metric>
+    <metric>not-app-in-secure-room</metric>
+    <metric>app-in-secure-room</metric>
+    <metric>not-app-in-secure-room + not-app-in-secure-room</metric>
+    <metric>not-app-rescued</metric>
+    <metric>app-rescued</metric>
+    <metric>not-app-rescued + app-rescued</metric>
+    <enumeratedValueSet variable="app-info?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-violents">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shooting?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shoot-noise">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attack-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-efectivity">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="num-peacefuls" first="150" step="50" last="600"/>
+    <enumeratedValueSet variable="leaders-percentage">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-percentage">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="defense-prob">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="not-alerted-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-speed">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-speed-deviation">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-iter">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-mode">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="first-blood">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="crowd-running">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="what-is-a-crowd?">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="p-150-600-v-2-app-off" repetitions="2" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>ticks</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-killed</metric>
+    <metric>app-killed + not-app-killed</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident + app-accident</metric>
+    <metric>not-app-in-secure-room</metric>
+    <metric>app-in-secure-room</metric>
+    <metric>not-app-in-secure-room + not-app-in-secure-room</metric>
+    <metric>not-app-rescued</metric>
+    <metric>app-rescued</metric>
+    <metric>not-app-rescued + app-rescued</metric>
+    <enumeratedValueSet variable="app-info?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-violents">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shooting?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shoot-noise">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attack-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-efectivity">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="num-peacefuls" first="150" step="50" last="600"/>
+    <enumeratedValueSet variable="leaders-percentage">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-percentage">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="defense-prob">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="not-alerted-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-speed">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-speed-deviation">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-iter">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-mode">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="first-blood">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="crowd-running">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="what-is-a-crowd?">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="prueba" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>ticks</metric>
+    <metric>not-app-killed</metric>
+    <metric>app-killed</metric>
+    <metric>app-killed + not-app-killed</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident + app-accident</metric>
+    <metric>not-app-in-secure-room</metric>
+    <metric>app-in-secure-room</metric>
+    <metric>not-app-in-secure-room + not-app-in-secure-room</metric>
+    <metric>not-app-rescued</metric>
+    <metric>app-rescued</metric>
+    <metric>not-app-rescued + app-rescued</metric>
+    <enumeratedValueSet variable="app-info?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-violents">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shooting?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shoot-noise">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attack-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-efectivity">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="num-peacefuls" first="150" step="50" last="250"/>
+    <enumeratedValueSet variable="leaders-percentage">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-percentage">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="defense-prob">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="not-alerted-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-speed">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-speed-deviation">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-iter">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-mode">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="first-blood">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="crowd-running">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="what-is-a-crowd?">
+      <value value="20"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
