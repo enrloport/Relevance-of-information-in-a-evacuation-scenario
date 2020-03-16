@@ -1472,6 +1472,7 @@ end
 
 
 
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 370
@@ -1533,10 +1534,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-20
-156
-164
-189
+19
+155
+163
+188
 num-violents
 num-violents
 0
@@ -1641,7 +1642,7 @@ HORIZONTAL
 SLIDER
 186
 405
-353
+355
 438
 max-iter
 max-iter
@@ -1656,7 +1657,7 @@ HORIZONTAL
 SWITCH
 20
 189
-164
+165
 222
 shooting?
 shooting?
@@ -2183,7 +2184,7 @@ INPUTBOX
 164
 416
 initial-positions
-[0 73]
+[1 2 3]
 1
 0
 String
@@ -2191,7 +2192,7 @@ String
 SLIDER
 20
 223
-164
+165
 256
 shoot-noise
 shoot-noise
@@ -2545,7 +2546,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
