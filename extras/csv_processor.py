@@ -262,7 +262,10 @@ def secuences (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False)
     gs = gridspec.GridSpec(2, 2, figure=fig)
         
     titles = ['KILLED', 'RESCUED', 'ACCIDENT', 'SECURE ROOM']
-    hi = [killed,rescued,accident,room]    
+    hi = [killed,rescued,accident,room]
+    
+    l={"linestyle":"--", "linewidth":2, "markeredgewidth":2, "elinewidth":2, "capsize":3}
+
 
     for i in range(4):
         j = i // 2
@@ -272,7 +275,7 @@ def secuences (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False)
 
         ax1 = fig.add_subplot(gs[j, k])        
         ax1.set_title( titles[i] )    
-        ax1.errorbar(xaxis, h[0], yerr=h[1])
+        ax1.errorbar(xaxis, h[0], yerr=h[1], **l)
         ax1.grid(color='lightgrey', linestyle='-')
      
     plt.show()
