@@ -13,8 +13,8 @@ import numpy as np
 import scipy.stats as stats
 
 
-file0 = "evacuation_scenario app-T-F-shooting-T-F-peace-150-600-visib-0-sound-0-table-2020-03-06.csv"
-file1 = "evacuation_scenario app-T-F-shooting-T-F-peace-150-600-visib-1-sound-1-table-2020-03-06.csv"
+file0 = "evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-0,sound-0,table-2020-03-06.csv"
+file1 = "evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-1,sound-1,table-2020-03-06.csv"
 
 dic_app_mod_0 = {}
 dic_not_app_mod_0 = {}
@@ -241,10 +241,10 @@ def compare_with_and_without_info (num_peac=150, mod=1, with_app = 'both', shoot
     plt.show()  
     
     
-def secuences (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False):
+def secuences (dic, with_app = 'both', shoot=True, normalized=False):
     main_title =  'App: activated' if dic == dic_app_mod_1 or dic == dic_app_mod_0 else 'App: deactivated'
     main_title += ', Visibility and sound mod: 1 \n' if dic == dic_app_mod_1 or dic == dic_not_app_mod_1 else ', Visibility and sound mod: 0 \n' 
-    main_title += 'Peacefuls: From 150 to 600' if num_peac == 0 else 'Peacefuls: ' + str(num_peac)
+    main_title += 'Peacefuls: From 150 to 600'
     main_title += ', Shooting' if shoot == True else ', Melee'
       
     xaxis = np.array([150,200,250,300,350,400,450,500,550,600])
@@ -258,7 +258,8 @@ def secuences (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False)
     accident = [ [np.mean(list_by(dic, p, 'accident',with_app, shoot, normalized )) for p in range(150,601,50)] 
                 ,[np.std( list_by(dic, p, 'accident',with_app, shoot, normalized )) for p in range(150,601,50)] ]
 
-    fig = plt.figure(figsize=(10, 10))    
+    fig = plt.figure(figsize=(10, 10))
+    fig.suptitle(main_title)
     gs = gridspec.GridSpec(2, 2, figure=fig)
         
     titles = ['KILLED', 'RESCUED', 'ACCIDENT', 'SECURE ROOM']
@@ -276,6 +277,75 @@ def secuences (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False)
         ax1 = fig.add_subplot(gs[j, k])        
         ax1.set_title( titles[i] )    
         ax1.errorbar(xaxis, h[0], yerr=h[1], **l)
+        ax1.grid(color='lightgrey', linestyle='-')
+     
+    plt.show()
+    
+    
+def compare_secuences ( mod=0, with_app = 'both', shoot=True, normalized=False):
+      
+    if mod == 1:
+        dic1=dic_app_mod_1
+        dic2=dic_not_app_mod_1
+    else:
+        dic1=dic_app_mod_0
+        dic2=dic_not_app_mod_0
+        
+    main_title = 'Visibility and sound mod: 1 \n' if dic1 == dic_app_mod_1 else 'Visibility and sound mod: 0 \n' 
+    main_title += 'Peacefuls: From 150 to 600' 
+    main_title += ', Shooting' if shoot == True else ', Melee'
+      
+    xaxis = np.array([150,200,250,300,350,400,450,500,550,600])
+    
+    room_app     = [ [np.mean(list_by(dic1, p, 'room',    with_app, shoot, normalized )) for p in range(150,601,50)] 
+                ,[np.std( list_by(dic1, p, 'room',    with_app, shoot, normalized )) for p in range(150,601,50)] ]
+    killed_app   = [ [np.mean(list_by(dic1, p, 'killed',  with_app, shoot, normalized )) for p in range(150,601,50)] 
+                ,[np.std( list_by(dic1, p, 'killed',  with_app, shoot, normalized )) for p in range(150,601,50)] ]
+    rescued_app  = [ [np.mean(list_by(dic1, p, 'rescued', with_app, shoot, normalized )) for p in range(150,601,50)] 
+                ,[np.std( list_by(dic1, p, 'rescued', with_app, shoot, normalized )) for p in range(150,601,50)] ] 
+    accident_app = [ [np.mean(list_by(dic1, p, 'accident',with_app, shoot, normalized )) for p in range(150,601,50)] 
+                ,[np.std( list_by(dic1, p, 'accident',with_app, shoot, normalized )) for p in range(150,601,50)] ]
+     
+    room_not_app     = [ [np.mean(list_by(dic2, p, 'room',    with_app, shoot, normalized )) for p in range(150,601,50)] 
+                ,[np.std( list_by(dic2, p, 'room',    with_app, shoot, normalized )) for p in range(150,601,50)] ]
+    killed_not_app   = [ [np.mean(list_by(dic2, p, 'killed',  with_app, shoot, normalized )) for p in range(150,601,50)] 
+                ,[np.std( list_by(dic2, p, 'killed',  with_app, shoot, normalized )) for p in range(150,601,50)] ]
+    rescued_not_app  = [ [np.mean(list_by(dic2, p, 'rescued', with_app, shoot, normalized )) for p in range(150,601,50)] 
+                ,[np.std( list_by(dic2, p, 'rescued', with_app, shoot, normalized )) for p in range(150,601,50)] ] 
+    accident_not_app = [ [np.mean(list_by(dic2, p, 'accident',with_app, shoot, normalized )) for p in range(150,601,50)] 
+                ,[np.std( list_by(dic2, p, 'accident',with_app, shoot, normalized )) for p in range(150,601,50)] ]
+
+    fig = plt.figure(figsize=(10, 10))
+    fig.suptitle(main_title)
+    gs = gridspec.GridSpec(2, 2, figure=fig)
+        
+    titles = ['KILLED', 'RESCUED', 'ACCIDENT', 'SECURE ROOM']
+    hi_app = [killed_app,rescued_app,accident_app,room_app]
+    hi_not_app = [killed_not_app,rescued_not_app,accident_not_app,room_not_app]
+    
+
+    l_app ={"linestyle":"--", "linewidth":2, "markeredgewidth":2, "elinewidth":2, "capsize":3}
+    l_not_app ={"color":"red", "linestyle":"--", "linewidth":2, "markeredgewidth":2, "elinewidth":2, "capsize":3}
+
+    for i in range(4):
+        j = i // 2
+        k = i % 2
+        
+        h1 = hi_app[i]        
+        h_app = np.array(h1)
+        h_app[h_app == 0] = np.nan
+        # h_app = hi_app[i]
+        
+        h2 = hi_not_app[i]        
+        h_not_app = np.array(h2)
+        h_not_app[h_not_app == 0] = np.nan
+        h_not_app = hi_not_app[i] 
+        # h_not_app = hi_not_app[i]        
+
+        ax1 = fig.add_subplot(gs[j, k])        
+        ax1.set_title( titles[i] )    
+        ax1.errorbar(xaxis, h_app[0], yerr=h_app[1], **l_app)
+        ax1.errorbar(xaxis, h_not_app[0], yerr=h_not_app[1], **l_not_app)
         ax1.grid(color='lightgrey', linestyle='-')
      
     plt.show()
