@@ -1477,7 +1477,6 @@ end
 
 
 
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 370
@@ -1677,7 +1676,7 @@ SWITCH
 671
 app-info?
 app-info?
-1
+0
 1
 -1000
 
@@ -1851,7 +1850,7 @@ attackers-speed
 attackers-speed
 0.1
 2
-0.5
+0.8
 0.1
 1
 NIL
@@ -3056,7 +3055,7 @@ NetLogo 6.1.1
       <value value="20"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="app-T-F,attacker-speed-0.6-1.0,shooting-T,peace-350,mods-1" repetitions="1000" runMetricsEveryStep="false">
+  <experiment name="app-T-F,attacker-speed-0.6-1.5,shooting-T,peace-350,mods-1" repetitions="1000" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <metric>not-app-killed</metric>
@@ -3088,7 +3087,7 @@ NetLogo 6.1.1
       <value value="1"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="num-violents">
-      <value value="1"/>
+      <value value="2"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="shoot-noise">
       <value value="0.5"/>
@@ -3099,7 +3098,7 @@ NetLogo 6.1.1
     <enumeratedValueSet variable="attackers-efectivity">
       <value value="0.5"/>
     </enumeratedValueSet>
-    <steppedValueSet variable="attackers-speed" first="0.6" step="0.1" last="1"/>
+    <steppedValueSet variable="attackers-speed" first="0.6" step="0.1" last="1.5"/>
     <enumeratedValueSet variable="initial-positions">
       <value value="&quot;[0 73]&quot;"/>
     </enumeratedValueSet>
@@ -3169,7 +3168,7 @@ NetLogo 6.1.1
       <value value="1"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="num-violents">
-      <value value="1"/>
+      <value value="2"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="shoot-noise">
       <value value="0.5"/>
