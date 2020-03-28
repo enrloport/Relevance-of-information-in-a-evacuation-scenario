@@ -254,7 +254,10 @@ to setup
     ask person t-agent [set size 2]
   ]
 
-  let positions (read-from-string initial-positions)
+  let positions []
+  if initial-positions != "" [
+    set positions (read-from-string initial-positions)
+  ]
 
   ;; CREATE VIOLENTS
   create-people num-violents [
@@ -268,6 +271,7 @@ to setup
     set last-locations    []
     set efectivity        attackers-efectivity
     set location          min-one-of nodes with [member? who positions][attacker?]
+    if location = nobody  [set location one-of nodes]
     set next-location     location
     move-to location
     ask location          [set attacker? 1]
@@ -1539,7 +1543,7 @@ num-violents
 num-violents
 0
 10
-2.0
+1.0
 1
 1
 NIL
@@ -1645,7 +1649,7 @@ max-iter
 max-iter
 0
 1000
-500.0
+0.0
 5
 1
 NIL
@@ -1843,7 +1847,7 @@ attackers-speed
 attackers-speed
 0.1
 2
-0.5
+0.8
 0.1
 1
 NIL
@@ -2543,7 +2547,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.0
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -2853,6 +2857,332 @@ NetLogo 6.1.0
     <enumeratedValueSet variable="leaders-percentage">
       <value value="0.2"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="app-percentage">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="defense-prob">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="not-alerted-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-speed">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-speed-deviation">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-iter">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-mode">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="first-blood">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="crowd-running">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="what-is-a-crowd?">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="app-T-F-shooting-T-F-peace-150-600-visib-1-sound-1" repetitions="1000" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>not-app-killed</metric>
+    <metric>app-killed</metric>
+    <metric>app-killed + not-app-killed</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident + app-accident</metric>
+    <metric>not-app-in-secure-room</metric>
+    <metric>app-in-secure-room</metric>
+    <metric>not-app-in-secure-room + not-app-in-secure-room</metric>
+    <metric>not-app-rescued</metric>
+    <metric>app-rescued</metric>
+    <metric>not-app-rescued + app-rescued</metric>
+    <enumeratedValueSet variable="app-info?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shooting?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="num-peacefuls" first="150" step="50" last="600"/>
+    <enumeratedValueSet variable="visibility-mod">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sound-mod">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-violents">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shoot-noise">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attack-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-efectivity">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-positions">
+      <value value="&quot;[0 73]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="leaders-percentage">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-percentage">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="defense-prob">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="not-alerted-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-speed">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-speed-deviation">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-iter">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-mode">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="first-blood">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="crowd-running">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="what-is-a-crowd?">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="app-T-F-shooting-T-F-peace-150-600-visib-0-sound-0" repetitions="1000" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>not-app-killed</metric>
+    <metric>app-killed</metric>
+    <metric>app-killed + not-app-killed</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident + app-accident</metric>
+    <metric>not-app-in-secure-room</metric>
+    <metric>app-in-secure-room</metric>
+    <metric>not-app-in-secure-room + not-app-in-secure-room</metric>
+    <metric>not-app-rescued</metric>
+    <metric>app-rescued</metric>
+    <metric>not-app-rescued + app-rescued</metric>
+    <enumeratedValueSet variable="app-info?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shooting?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="num-peacefuls" first="150" step="50" last="600"/>
+    <enumeratedValueSet variable="visibility-mod">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sound-mod">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-violents">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shoot-noise">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attack-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-efectivity">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-positions">
+      <value value="&quot;[0 73]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="leaders-percentage">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-percentage">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="defense-prob">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="not-alerted-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-speed">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-speed-deviation">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-iter">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-mode">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="first-blood">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="crowd-running">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="what-is-a-crowd?">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="app-T-F,attacker-speed-0.6-1.5,shooting-T,peace-350,mods-1" repetitions="1000" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>not-app-killed</metric>
+    <metric>app-killed</metric>
+    <metric>app-killed + not-app-killed</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident + app-accident</metric>
+    <metric>not-app-in-secure-room</metric>
+    <metric>app-in-secure-room</metric>
+    <metric>not-app-in-secure-room + not-app-in-secure-room</metric>
+    <metric>not-app-rescued</metric>
+    <metric>app-rescued</metric>
+    <metric>not-app-rescued + app-rescued</metric>
+    <enumeratedValueSet variable="app-info?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shooting?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-peacefuls">
+      <value value="350"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="visibility-mod">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sound-mod">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-violents">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shoot-noise">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attack-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-efectivity">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="attackers-speed" first="0.6" step="0.1" last="1.5"/>
+    <enumeratedValueSet variable="initial-positions">
+      <value value="&quot;[0 73]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="leaders-percentage">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-percentage">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="defense-prob">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="not-alerted-speed">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mean-speed">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-speed-deviation">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-iter">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="app-mode">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="first-blood">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="crowd-running">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="what-is-a-crowd?">
+      <value value="20"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="app-T-F,leaders-percent-0-1,shooting-T,peace-350,mods-1" repetitions="1000" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>not-app-killed</metric>
+    <metric>app-killed</metric>
+    <metric>app-killed + not-app-killed</metric>
+    <metric>not-app-accident</metric>
+    <metric>app-accident</metric>
+    <metric>not-app-accident + app-accident</metric>
+    <metric>not-app-in-secure-room</metric>
+    <metric>app-in-secure-room</metric>
+    <metric>not-app-in-secure-room + not-app-in-secure-room</metric>
+    <metric>not-app-rescued</metric>
+    <metric>app-rescued</metric>
+    <metric>not-app-rescued + app-rescued</metric>
+    <enumeratedValueSet variable="app-info?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shooting?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-peacefuls">
+      <value value="350"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="visibility-mod">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sound-mod">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-violents">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shoot-noise">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attack-prob">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-efectivity">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="attackers-speed">
+      <value value="0.8"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-positions">
+      <value value="&quot;[0 73]&quot;"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="leaders-percentage" first="0" step="0.1" last="1"/>
     <enumeratedValueSet variable="app-percentage">
       <value value="50"/>
     </enumeratedValueSet>
