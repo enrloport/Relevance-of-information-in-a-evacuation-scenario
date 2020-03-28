@@ -1470,9 +1470,6 @@ end
 
 
 
-
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 370
@@ -1527,7 +1524,7 @@ num-peacefuls
 num-peacefuls
 1
 1000
-250.0
+350.0
 1
 1
 NIL
@@ -1672,7 +1669,7 @@ SWITCH
 671
 app-info?
 app-info?
-1
+0
 1
 -1000
 
@@ -2040,7 +2037,7 @@ attack-prob
 attack-prob
 0
 1
-0.5
+0.8
 0.05
 1
 NIL
@@ -2184,7 +2181,7 @@ INPUTBOX
 164
 416
 initial-positions
-[1 2 3]
+[0 73]
 1
 0
 String

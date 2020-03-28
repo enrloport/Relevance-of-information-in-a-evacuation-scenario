@@ -16,6 +16,8 @@ import scipy.stats as stats
 file0 = "evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-0,sound-0,table-2020-03-06.csv"
 file1 = "evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-1,sound-1,table-2020-03-06.csv"
 
+file2 = "evacuation_scenario app-T-F,attacker-speed-0.6-1.5,shooting-T,peace-350,mods-1-table.csv"
+
 dic_app_mod_0 = {}
 dic_not_app_mod_0 = {}
 dic_app_mod_1 = {}
@@ -248,15 +250,16 @@ def secuences (dic, with_app = 'both', shoot=True, normalized=False):
     main_title += ', Shooting' if shoot == True else ', Melee'
       
     xaxis = np.array([150,200,250,300,350,400,450,500,550,600])
-     
-    room     = [ [np.mean(list_by(dic, p, 'room',    with_app, shoot, normalized )) for p in range(150,601,50)] 
-                ,[np.std( list_by(dic, p, 'room',    with_app, shoot, normalized )) for p in range(150,601,50)] ]
-    killed   = [ [np.mean(list_by(dic, p, 'killed',  with_app, shoot, normalized )) for p in range(150,601,50)] 
-                ,[np.std( list_by(dic, p, 'killed',  with_app, shoot, normalized )) for p in range(150,601,50)] ]
-    rescued  = [ [np.mean(list_by(dic, p, 'rescued', with_app, shoot, normalized )) for p in range(150,601,50)] 
-                ,[np.std( list_by(dic, p, 'rescued', with_app, shoot, normalized )) for p in range(150,601,50)] ] 
-    accident = [ [np.mean(list_by(dic, p, 'accident',with_app, shoot, normalized )) for p in range(150,601,50)] 
-                ,[np.std( list_by(dic, p, 'accident',with_app, shoot, normalized )) for p in range(150,601,50)] ]
+    rang = range(150,601,50)
+    
+    room     = [ [np.mean(list_by(dic, p, 'room',    with_app, shoot, normalized )) for p in rang] 
+                ,[np.std( list_by(dic, p, 'room',    with_app, shoot, normalized )) for p in rang] ]
+    killed   = [ [np.mean(list_by(dic, p, 'killed',  with_app, shoot, normalized )) for p in rang] 
+                ,[np.std( list_by(dic, p, 'killed',  with_app, shoot, normalized )) for p in rang] ]
+    rescued  = [ [np.mean(list_by(dic, p, 'rescued', with_app, shoot, normalized )) for p in rang] 
+                ,[np.std( list_by(dic, p, 'rescued', with_app, shoot, normalized )) for p in rang] ] 
+    accident = [ [np.mean(list_by(dic, p, 'accident',with_app, shoot, normalized )) for p in rang] 
+                ,[np.std( list_by(dic, p, 'accident',with_app, shoot, normalized )) for p in rang] ]
 
     fig = plt.figure(figsize=(10, 10))
     fig.suptitle(main_title)
