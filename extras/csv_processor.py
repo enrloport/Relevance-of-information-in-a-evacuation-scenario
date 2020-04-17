@@ -3,48 +3,57 @@
 """
 Created on Thu Mar  5 18:31:57 2020
 
-@author: one
+@author: Enrique J. López Ortiz
 """
-
+import datetime
 import csv
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import scipy.stats as stats
-
+# from scipy.stats import norm
+# import matplotlib.mlab as mlab
 
 file0 = "evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-0,sound-0,table-2020-03-06.csv"
-dic_app_mod_0     = {'name': 'dic_app_mod_0'}
-dic_not_app_mod_0 = {'name': 'dic_not_app_mod_0'}
+dic__mod_0__app_1 = {'name': 'mod_0 - app_1'}
+dic__mod_0__app_0 = {'name': 'mod_0 - app_0'}
 
 file1 = "evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-1,sound-1,table-2020-03-06.csv"
-dic_app_mod_1     = {'name': 'dic_app_mod_1'}
-dic_not_app_mod_1 = {'name': 'dic_not_app_mod_1'}
+dic__mod_1__app_1 = {'name': 'mod_1 - app_1'}
+dic__mod_1__app_0 = {'name': 'mod_1 - app_0'}
 
 file2 = "evacuation_scenario app-T-F,attacker-speed-0.6-1.5,shooting-T,peace-350,mods-1-table.csv"
-dic_app_attck_speed     = {'name': 'dic_app_attck_speed'}
-dic_not_app_attck_speed = {'name': 'dic_not_app_attck_speed'}
+dic__mod_1__app_1__attackers_speed = {'name': 'mod_1 - app_1 - attackers_speed'}
+dic__mod_1__app_0__attackers_speed = {'name': 'mod_1 - app_0 - attackers_speed'}
 
 file3 = "evacuation_scenario app-T-F,leaders-percent-0-1,shooting-T,peace-350,mods-1-table.csv"
-dic_app_leaders     = {'name': 'dic_app_leaders'}
-dic_not_app_leaders = {'name': 'dic_not_app_leaders'}
+dic__mod_1__app_1__leaders = {'name': 'mod_1 - app_1 - leaders'}
+dic__mod_1__app_0__leaders = {'name': 'mod_1 - app_0 - leaders'}
 
-file4 = "evacuation_scenario app-T-F,rooms-T-F,shooting-T,peace-350,visib-0,sound-0-table.csv"
-dic_app_rooms_0     = {'name': 'dic_app_rooms_0'}
-dic_not_app_rooms_0 = {'name': 'dic_not_app_rooms_0'}
+file4 = "evacuation_scenario app-T-F,rooms-T-F,shooting-T,peace-350,visib-0,sound-0-table-2020-04-05.csv"
+dic__mod_0__app_1__rooms_1 = {'name': 'mod_0 - app_1 - rooms_1'}
+dic__mod_0__app_1__rooms_0 = {'name': 'mod_0 - app_1 - rooms_0'}
+dic__mod_0__app_0__rooms_1 = {'name': 'mod_0 - app_0 - rooms_1'}
+dic__mod_0__app_0__rooms_0 = {'name': 'mod_0 - app_0 - rooms_0'}
 
-file5 = "evacuation_scenario app-T-F,rooms-T-F,shooting-T,peace-350,visib-1,sound-1-table.csv"
-dic_app_rooms_1     = {'name': 'dic_app_rooms_1'}
-dic_not_app_rooms_1 = {'name': 'dic_not_app_rooms_1'}
+file5 = "evacuation_scenario app-T-F,rooms-T-F,shooting-T,peace-350,visib-1,sound-1-table-2020-04-05.csv"
+dic__mod_1__app_1__rooms_1 = {'name': 'mod_1 - app_1 - rooms_1'}
+dic__mod_1__app_1__rooms_0 = {'name': 'mod_1 - app_1 - rooms_0'}
+dic__mod_1__app_0__rooms_1 = {'name': 'mod_1 - app_0 - rooms_1'}
+dic__mod_1__app_0__rooms_0 = {'name': 'mod_1 - app_0 - rooms_0'}
+
+
 
 
 dic_tuple = {
-     'mod_0'          : (dic_app_mod_0, dic_not_app_mod_0)
-    ,'mod_1'          : (dic_app_mod_1, dic_not_app_mod_1)
-    ,'attacker_speed' : (dic_app_attck_speed, dic_not_app_attck_speed)
-    ,'leaders'        : (dic_app_leaders, dic_not_app_leaders)
-    ,'rooms_0'        : (dic_app_rooms_0, dic_not_app_rooms_0)
-    ,'rooms_1'        : (dic_app_rooms_1, dic_not_app_rooms_1)
+     'mod_0'          : (dic__mod_0__app_1, dic__mod_0__app_0)
+    ,'mod_1'          : (dic__mod_1__app_1, dic__mod_1__app_0)
+    ,'attacker_speed' : (dic__mod_1__app_1__attackers_speed, dic__mod_1__app_0__attackers_speed)
+    ,'leaders'        : (dic__mod_1__app_1__leaders, dic__mod_1__app_0__leaders)
+    ,'mod_0_rooms_1'  : (dic__mod_0__app_1__rooms_1, dic__mod_0__app_0__rooms_1)
+    ,'mod_1_rooms_1'  : (dic__mod_1__app_1__rooms_1, dic__mod_1__app_0__rooms_1)
+    ,'mod_0_rooms_0'  : (dic__mod_0__app_1__rooms_0, dic__mod_0__app_0__rooms_0)
+    ,'mod_1_rooms_0'  : (dic__mod_1__app_1__rooms_0, dic__mod_1__app_0__rooms_0 )
     }
 
 dics_with_app = [x[0] for x in dic_tuple.values()]
@@ -92,15 +101,20 @@ class simulation:
 
 def read_file(file):
     dic = {
-         file0 : (dic_app_mod_0, dic_not_app_mod_0)
-        ,file1 : (dic_app_mod_1, dic_not_app_mod_1)
-        ,file2 : (dic_app_attck_speed, dic_not_app_attck_speed)
-        ,file3 : (dic_app_leaders, dic_not_app_leaders)
-        ,file4 : (dic_app_rooms_0, dic_not_app_rooms_0)
-        ,file5 : (dic_app_rooms_1, dic_not_app_rooms_1)
+         file0 : (dic__mod_0__app_1, dic__mod_0__app_0)
+        ,file1 : (dic__mod_1__app_1, dic__mod_1__app_0)
+        ,file2 : (dic__mod_1__app_1__attackers_speed, dic__mod_1__app_0__attackers_speed)
+        ,file3 : (dic__mod_1__app_1__leaders, dic__mod_1__app_0__leaders)
+        ,file4 : (dic__mod_0__app_1__rooms_1, dic__mod_0__app_0__rooms_1, dic__mod_0__app_1__rooms_0, dic__mod_0__app_0__rooms_0)
+        ,file5 : (dic__mod_1__app_1__rooms_1, dic__mod_1__app_0__rooms_1, dic__mod_1__app_1__rooms_0, dic__mod_1__app_0__rooms_0 )
         }
     dic_app     = dic[file][0]
     dic_not_app = dic[file][1]
+    try:
+        dic_app_not_rooms     = dic[file][2]
+        dic_not_app_not_rooms = dic[file][3]
+    except:
+        pass
    
     with open(file, 'r') as f:
         reader = csv.reader(f)
@@ -108,19 +122,37 @@ def read_file(file):
             try:
                 # print('hola',row)
                 if row[1]== 'true':
-                    dic_app[int(row[0])] = simulation( row[2], row[3], row[4], row[5], row[10], row[12], row[23]
-                                        , row[24], row[25], row[26]
-                                        , row[27], row[28], row[29]
-                                        , row[30], row[31], row[32]
-                                        , row[33], row[34], row[35], row[36]
-                                        )
+                    if row[36] == 'true':
+                        dic_app[int(row[0])] = simulation( row[2], row[3], row[4], row[5], row[10], row[12], row[23]
+                                            , row[24], row[25], row[26]
+                                            , row[27], row[28], row[29]
+                                            , row[30], row[31], row[32]
+                                            , row[33], row[34], row[35], row[36]
+                                            )
+                    else:
+                        dic_app_not_rooms[int(row[0])] = simulation( row[2], row[3], row[4], row[5], row[10], row[12], row[23]
+                                            , row[24], row[25], row[26]
+                                            , row[27], row[28], row[29]
+                                            , row[30], row[31], row[32]
+                                            , row[33], row[34], row[35], row[36]
+                                            )
+                        
                 else:
-                    dic_not_app[int(row[0])] = simulation( row[2], row[3], row[4], row[5], row[10], row[12], row[23]
-                                        , row[24], row[25], row[26]
-                                        , row[27], row[28], row[29]
-                                        , row[30], row[31], row[32]
-                                        , row[33], row[34], row[35], row[36]
-                                        )
+                    if row[36] == 'true':
+                        dic_not_app[int(row[0])] = simulation( row[2], row[3], row[4], row[5], row[10], row[12], row[23]
+                                            , row[24], row[25], row[26]
+                                            , row[27], row[28], row[29]
+                                            , row[30], row[31], row[32]
+                                            , row[33], row[34], row[35], row[36]
+                                            )
+                    else:
+                        dic_not_app_not_rooms[int(row[0])] = simulation( row[2], row[3], row[4], row[5], row[10], row[12], row[23]
+                                            , row[24], row[25], row[26]
+                                            , row[27], row[28], row[29]
+                                            , row[30], row[31], row[32]
+                                            , row[33], row[34], row[35], row[36]
+                                            )
+                        
             except:
                 pass      
 
@@ -164,29 +196,29 @@ def list_by (dic, num_peac, result='rescued', targets = 'both', shoot=True, norm
     if num_peac == 0:
         for k in keys:
             if dic[k].shooting == shoot and filter_aux(dic[k], criteria):
-                norm = dic[k].peacefuls if normalized else 1
-                res.append(select(dic[k])[2] / norm )            
+                normal = dic[k].peacefuls if normalized else 1
+                res.append(select(dic[k])[2] / normal )            
     elif targets == 'app':
         for k in keys:
             if dic[k].shooting == shoot and dic[k].peacefuls == num_peac  and filter_aux(dic[k], criteria):
-                norm = dic[k].count_app if normalized else 1                    
-                res.append(select(dic[k])[0] / norm )            
+                normal = dic[k].count_app if normalized else 1                    
+                res.append(select(dic[k])[0] / normal )            
     elif targets == 'not_app':
         for k in keys:
             if dic[k].shooting == shoot and dic[k].peacefuls == num_peac and filter_aux(dic[k], criteria):
-                norm = dic[k].count_app if normalized else 1
-                res.append(select(dic[k])[1] / norm ) 
+                normal = dic[k].count_app if normalized else 1
+                res.append(select(dic[k])[1] / normal ) 
     else:
         for k in keys:
             if dic[k].shooting == shoot and dic[k].peacefuls == num_peac and filter_aux(dic[k], criteria):
-                norm = dic[k].peacefuls if normalized else 1
-                res.append(select(dic[k])[2] / norm )
+                normal = dic[k].peacefuls if normalized else 1
+                res.append(select(dic[k])[2] / normal )
                 
     return res
 
-
+    
 # Given a dictionary, this function plots the histograms for rescued, killed, room and accident 
-def show_histograms (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False):
+def show_histograms (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False, save_file=True):
     main_title = dic['name']
     main_title += '\nApp: activated' if dic in dics_with_app else '\nApp: deactivated'
     main_title += '\nPeacefuls: From 150 to 600' if num_peac == 0 else '\nPeacefuls: ' + str(num_peac)
@@ -218,27 +250,30 @@ def show_histograms (dic, num_peac=0, with_app = 'both', shoot=True, normalized=
     
     plt.suptitle(main_title, y=1.05)
     plt.tight_layout()
+    
+    t=str(datetime.datetime.now())[:-7]
+    if save_file:
+        plt.savefig('show_histograms_'+t+'.pdf', bbox_inches='tight', pad_inches=0.3)   
     plt.show()
 
 
 # This function returns a plot where we are comparing the histograms (with and without app info) of a given pair of dictionaries (dic)
 # admited values for dics are in dic_tuples dictionary:
-    # 'mod_0'          : (dic_app_mod_0, dic_not_app_mod_0)
-    # 'mod_1'          : (dic_app_mod_1, dic_not_app_mod_1)
-    # 'attacker_speed' : (dic_app_attck_speed, dic_not_app_attck_speed)
-    # 'leaders'        : (dic_app_leaders, dic_not_app_leaders)
+    # 'mod_0'          : (dic__mod_0__app_1, dic__mod_0__app_0)
+    # 'mod_1'          : (dic__mod_1__app_1, dic__mod_1__app_0)
+    # 'attacker_speed' : (dic__mod_1__app_1__attackers_speed, dic__mod_1__app_0__attackers_speed)
+    # 'leaders'        : (dic__mod_1__app_1__leaders, dic__mod_1__app_0__leaders)
     # 'rooms_0'        : (dic_app_rooms_0, dic_not_app_rooms_0)
     # 'rooms_1'        : (dic_app_rooms_1, dic_not_app_rooms_1)
-def compare_with_and_without_info ( dics, num_peac=350, with_app = 'both', shoot=True, normalized=False ):
+
+def compare_histograms ( dics, num_peac=350, with_app = 'both', shoot=True, normalized=False, save_file=False ):
     
     dic1 = dic_tuple[dics][0]
     dic2 = dic_tuple[dics][1]
-    print("NOMBRES: ", dic1['name'], " ", dic2['name'])
     
-    main_title = 'Comparing: ' + dic1['name'] + ' and '+ dic2['name'] + '\n'
+    main_title = 'Comparing: ' + dic1['name'] + '  WITH  '+ dic2['name'] + '\n'
     main_title += 'Peacefuls: From 150 to 600' if num_peac == 0 else 'Peacefuls: ' + str(num_peac)
-    main_title += ', Shooting' if shoot == True else ', Melee'
-    
+    main_title += ', Shooting' if shoot == True else ', Melee'    
     
     h1  = (list_by(dic1, num_peac, 'killed'  , with_app, shoot, normalized ))
     h2  = (list_by(dic1, num_peac, 'rescued' , with_app, shoot, normalized ))
@@ -257,6 +292,7 @@ def compare_with_and_without_info ( dics, num_peac=350, with_app = 'both', shoot
     fig = plt.figure(figsize=(10,10))
     gs = gridspec.GridSpec(2, 2, figure=fig)
     
+    
     for i in range(4):
         j = i // 2
         k = i % 2
@@ -264,34 +300,42 @@ def compare_with_and_without_info ( dics, num_peac=350, with_app = 'both', shoot
         h = hi[i]
         h.sort()
         h_mean = np.mean(h)
-        h_mean = h_mean if h_mean != 0 else 0.001
         h_std = np.std(h)
-        h_std = h_std if h_std != 0 else 0.001
+        h_std = h_std if h_std != 0 else 0.0001
         pdf = stats.norm.pdf(h, h_mean, h_std)    
 
         hn = hin[i]
         hn.sort()
         hn_mean = np.mean(hn)
-        hn_std = np.std(hn)     
+        hn_std = np.std(hn)
+        hn_std = hn_std if hn_std != 0 else 0.0001
         pdfn = stats.norm.pdf(hn, hn_mean, hn_std)    
         
         ax1 = fig.add_subplot(gs[j, k]) 
         title = titles[i] + '\n App-ON -> Mean: ' + str( "{0:.3f}".format(h_mean) ) + ', Std: ' + str( "{0:.3f}".format(h_std))
         title += '\n App-OFF -> Mean: ' + str( "{0:.3f}".format(hn_mean) ) + ', Std: ' + str( "{0:.3f}".format(hn_std))
         
-        ax1.set_title( title ) 
-        ax1.plot(h, pdf,'-o', color='blue')
+        ax1.set_title( title )
+        if (sum(h)>0):
+            ax1.plot(h, pdf,'-o', color='blue')
         ax1.hist(h, density=True, color = 'blue', alpha=0.3)
-        ax1.plot(hn, pdfn,'-o', color='red')
-        
-        if hn_mean + hn_std > 0:
+        if (sum(hn)>0):
+            ax1.plot(hn, pdfn,'-o', color='red')
             ax1.hist(hn, density=True, color = 'red', alpha=0.3)
             
         
         ax1.grid(color='lightgrey', linestyle='-')
+        ax1.axes.get_yaxis().set_visible(False)
 
+
+    plt.subplots_adjust(left=None, bottom=-0.5, right=None, top=1,
+                wspace=0.5, hspace=0.5)
+    
     plt.suptitle(main_title, y=1.05)
     plt.tight_layout()
+    t=str(datetime.datetime.now())[:-7]
+    if save_file:
+        plt.savefig('compare_histograms_'+t+'.pdf', bbox_inches='tight', pad_inches=0.3)   
     plt.show()  
     
         
@@ -299,9 +343,9 @@ def compare_with_and_without_info ( dics, num_peac=350, with_app = 'both', shoot
 def secuences_by (dic, secuence = '', with_app = 'both', shoot=True, normalized=False):
     
     if secuence == '':
-        if dic == dic_app_attck_speed or dic == dic_not_app_attck_speed:
+        if dic == dic__mod_1__app_1__attackers_speed or dic == dic__mod_1__app_0__attackers_speed:
             secuence = 'attacker_speed'
-        elif dic == dic_app_leaders or dic == dic_not_app_leaders:
+        elif dic == dic__mod_1__app_1__leaders or dic == dic__mod_1__app_0__leaders:
             secuence = 'leaders_percentage'
         else:
             secuence = 'people'
@@ -340,18 +384,18 @@ def secuences_by (dic, secuence = '', with_app = 'both', shoot=True, normalized=
 
 
 # Given a dictionary and a target secuence, this function plots the secuences for killed,rescued,in secure rooms and accidents
-def show_secuences(dic, secuence = '', with_app = 'both', shoot=True, normalized=False):
+def show_secuences(dic, secuence = '', with_app = 'both', shoot=True, normalized=False, save_file=False):
     
     if secuence == '':
-        if dic == dic_app_attck_speed or dic == dic_not_app_attck_speed:
+        if dic == dic__mod_1__app_1__attackers_speed or dic == dic__mod_1__app_0__attackers_speed:
             secuence = 'attacker_speed'
-        elif dic == dic_app_leaders or dic == dic_not_app_leaders:
+        elif dic == dic__mod_1__app_1__leaders or dic == dic__mod_1__app_0__leaders:
             secuence = 'leaders_percentage'
         else:
             secuence = 'people'
             
     main_title =  'App: activated' if dic in dics_with_app else 'App: deactivated'
-    main_title += ', Visibility and sound mod: 0 \n' if dic == dic_app_mod_0 or dic == dic_not_app_mod_0 else ', Visibility and sound mod: 1 \n' 
+    main_title += ', Visibility and sound mod: 0 \n' if dic == dic__mod_0__app_1 or dic == dic__mod_0__app_0 else ', Visibility and sound mod: 1 \n' 
     main_title += 'Peacefuls: From 150 to 600' if secuence == 'people' else 'Attacker speed: From 0.6 to 1.5' if secuence == 'attacker_speed' else 'Leaders percentage: from 0 to 1'
     main_title += ', Shooting' if shoot == True else ', Melee'
       
@@ -376,28 +420,30 @@ def show_secuences(dic, secuence = '', with_app = 'both', shoot=True, normalized
         ax1.set_title( titles[i] )    
         ax1.errorbar(xaxis, h[0], yerr=h[1], **l)
         ax1.grid(color='lightgrey', linestyle='-')
-     
+    
+    t=str(datetime.datetime.now())[:-7]
+    if save_file:
+        plt.savefig('show_secuences_'+t+'.pdf', bbox_inches='tight', pad_inches=0.3)   
     plt.show()
     
 
 # Given two dictionaries and a target secuence, This function plot the secuences comparation for killed, rescued,accidents and in secure rooms
-# Secuence admited values: 'people', 'attacker_speed', 'leaders_percentage' 
-def compare_secuences ( dic1, dic2, secuence='', with_app = 'both', shoot=True, normalized=False ):
+# Admited secuence values: 'people', 'attacker_speed', 'leaders_percentage' 
+def compare_secuences ( dic1, dic2, secuence='', with_app = 'both', shoot=True, normalized=False, save_file=False ):
               
     if secuence == '':
-        if dic1 == dic_app_attck_speed or dic1 == dic_not_app_attck_speed:
+        if dic1 == dic__mod_1__app_1__attackers_speed or dic1 == dic__mod_1__app_0__attackers_speed:
             secuence = 'attacker_speed'
-        elif dic1 == dic_app_leaders or dic1 == dic_not_app_leaders:
+        elif dic1 == dic__mod_1__app_1__leaders or dic1 == dic__mod_1__app_0__leaders:
             secuence = 'leaders_percentage'
         else:
             secuence = 'people'
             
-    # main_title = 'Visibility and sound mod: 0 \n' if dic1 == dic_app_mod_0 else 'Visibility and sound mod: 1 \n' 
+    # main_title = 'Visibility and sound mod: 0 \n' if dic1 == dic__mod_0__app_1 else 'Visibility and sound mod: 1 \n' 
     main_title = 'Comparing: '+dic1['name']+' and '+dic2['name']+ '\n' 
     main_title += 'Shooting, ' if shoot == True else 'Melee, '
     main_title += 'Peacefuls: From 150 to 600' if secuence == 'people' else 'Peacefuls: 350\nAttacker speed: From 0.6 to 1.5' if secuence == 'attacker_speed' else 'Peacefuls: 350\nLeaders percentage: from 0 to 1'
-    
-       
+         
     fig = plt.figure(figsize=(10, 10))
     fig.suptitle(main_title)
     gs = gridspec.GridSpec(2, 2, figure=fig)
@@ -408,8 +454,8 @@ def compare_secuences ( dic1, dic2, secuence='', with_app = 'both', shoot=True, 
     
     xaxis = hi_app[-1]
 
-    l_app     ={"linestyle":"--", "linewidth":2, "markeredgewidth":2, "elinewidth":2, "capsize":3}
-    l_not_app ={"color":"red", "linestyle":"--", "linewidth":2, "markeredgewidth":2, "elinewidth":2, "capsize":3}
+    l_app     = {"linestyle":"--", "linewidth":2, "markeredgewidth":2, "elinewidth":2, "capsize":3, "color":"blue"}
+    l_not_app = {"linestyle":"--", "linewidth":2, "markeredgewidth":2, "elinewidth":2, "capsize":3, "color":"red"}
 
     for i in range(4):
         j = i // 2
@@ -418,35 +464,37 @@ def compare_secuences ( dic1, dic2, secuence='', with_app = 'both', shoot=True, 
         h1 = hi_app[i]        
         h_app = np.array(h1)
         h_app[h_app == 0] = np.nan
-        # h_app = hi_app[i]
         
         h2 = hi_not_app[i]        
         h_not_app = np.array(h2)
         h_not_app[h_not_app == 0] = np.nan
         h_not_app = hi_not_app[i] 
-        # h_not_app = hi_not_app[i]        
 
         ax1 = fig.add_subplot(gs[j, k])        
         ax1.set_title( titles[i] )    
         ax1.errorbar(xaxis, h_app[0], yerr=h_app[1], **l_app)
         ax1.errorbar(xaxis, h_not_app[0], yerr=h_not_app[1], **l_not_app)
         ax1.grid(color='lightgrey', linestyle='-')
-     
+        
+    t=str(datetime.datetime.now())[:-7]
+    if save_file:
+        plt.savefig('compare_secuences_'+t+'.pdf', bbox_inches='tight', pad_inches=0.3)     
     plt.show()
        
     
 #  Given a dictionary and a target result, this function plots a simple histogram
 #  results options: 'rescued', 'killed', 'room', 'accident'
-def histogram (dic=dic_app_mod_0, num_peac=0, result='rescued', with_app = 'both', shoot=True, normalized=False):
+def histogram (dic=dic__mod_0__app_1, num_peac=0, result='rescued', with_app = 'both', shoot=True, normalized=False):
     main_title = 'App: activated' if dic in dics_with_app else 'App: deactivated'
-    main_title += ', Visibility and sound mod: ' + '0 \n' if dic == dic_app_mod_0 or dic == dic_app_mod_0 else '1 \n' 
+    main_title += ', Visibility and sound mod: ' + '0 \n' if dic == dic__mod_0__app_1 or dic == dic__mod_0__app_1 else '1 \n' 
     main_title += ', Peacefuls: From 150 to 600' if num_peac == 0 else ', Peacefuls: ' + str(num_peac)
     main_title += ', Shooting' if shoot == True else ', Melee'
     
     h = list_by(dic, num_peac, result, with_app, shoot, normalized )
     h.sort()
     hmean = np.mean(h)
-    hstd = np.std(h)
+    hstd = np.std(h) 
+    hstd = hstd if hstd > 0 else 0.6
     pdf = stats.norm.pdf(h, hmean, hstd)
     plt.suptitle(main_title, y = 1.03)
     plt.title(result + ' - Mean: ' + str( "{0:.3f}".format(hmean) ) + ', Std: ' + str( "{0:.3f}".format(hstd) ) )
