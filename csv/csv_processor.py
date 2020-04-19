@@ -11,46 +11,38 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import scipy.stats as stats
-# from scipy.stats import norm
-# import matplotlib.mlab as mlab
+
 
 # Create some dictionaries for the content of every file 
-file0 = "evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-0,sound-0,table-2020-03-06.csv"
-dic__mod_0__app_1 = {'name': 'mod_0 - app_1'}
-dic__mod_0__app_0 = {'name': 'mod_0 - app_0'}
+file0 = "files/evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-0,sound-0.csv"
+dic__mod_0__app_1__peacefuls = {'name': 'mod_0 - app_1 - peacefuls'}
+dic__mod_0__app_0__peacefuls = {'name': 'mod_0 - app_0 - peacefuls'}
 
-file1 = "evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-1,sound-1,table-2020-03-06.csv"
-dic__mod_1__app_1 = {'name': 'mod_1 - app_1'}
-dic__mod_1__app_0 = {'name': 'mod_1 - app_0'}
+file1 = "files/evacuation_scenario:app-T-F,shooting-T-F,peace-150-600,visib-1,sound-1.csv"
+dic__mod_1__app_1__peacefuls = {'name': 'mod_1 - app_1 - peacefuls'}
+dic__mod_1__app_0__peacefuls = {'name': 'mod_1 - app_0 - peacefuls'}
 
-file2 = "evacuation_scenario app-T-F,attacker-speed-0.6-1.5,shooting-T,peace-350,mods-1-table.csv"
+file2 = "files/evacuation_scenario app-T-F,attacker-speed-0.6-1.5,shooting-T,peace-350,mods-1.csv"
 dic__mod_1__app_1__attackers_speed = {'name': 'mod_1 - app_1 - attackers_speed'}
 dic__mod_1__app_0__attackers_speed = {'name': 'mod_1 - app_0 - attackers_speed'}
 
-file3 = "evacuation_scenario app-T-F,leaders-percent-0-1,shooting-T,peace-350,mods-1-table.csv"
+file3 = "files/evacuation_scenario app-T-F,leaders-percent-0-1,shooting-T,peace-350,mods-1.csv"
 dic__mod_1__app_1__leaders = {'name': 'mod_1 - app_1 - leaders'}
 dic__mod_1__app_0__leaders = {'name': 'mod_1 - app_0 - leaders'}
 
-file4 = "evacuation_scenario app-T-F,rooms-T-F,shooting-T,peace-350,visib-0,sound-0-table-2020-04-05.csv"
+file4 = "files/evacuation_scenario app-T-F,rooms-T-F,shooting-T,peace-350,visib-0,sound-0.csv"
 dic__mod_0__app_1__rooms_1 = {'name': 'mod_0 - app_1 - rooms_1'}
 dic__mod_0__app_1__rooms_0 = {'name': 'mod_0 - app_1 - rooms_0'}
 dic__mod_0__app_0__rooms_1 = {'name': 'mod_0 - app_0 - rooms_1'}
 dic__mod_0__app_0__rooms_0 = {'name': 'mod_0 - app_0 - rooms_0'}
 
-file5 = "evacuation_scenario app-T-F,rooms-T-F,shooting-T,peace-350,visib-1,sound-1-table-2020-04-05.csv"
+file5 = "files/evacuation_scenario app-T-F,rooms-T-F,shooting-T,peace-350,visib-1,sound-1.csv"
 dic__mod_1__app_1__rooms_1 = {'name': 'mod_1 - app_1 - rooms_1'}
 dic__mod_1__app_1__rooms_0 = {'name': 'mod_1 - app_1 - rooms_0'}
 dic__mod_1__app_0__rooms_1 = {'name': 'mod_1 - app_0 - rooms_1'}
 dic__mod_1__app_0__rooms_0 = {'name': 'mod_1 - app_0 - rooms_0'}
  
-dics_with_app = [  dic__mod_0__app_1
-                 , dic__mod_1__app_1
-                 , dic__mod_1__app_1__attackers_speed
-                 , dic__mod_1__app_1__leaders
-                 , dic__mod_0__app_1__rooms_1
-                 , dic__mod_1__app_1__rooms_1
-                 , dic__mod_0__app_1__rooms_0
-                 , dic__mod_1__app_1__rooms_0]
+
 
 # Every single file of each csv file will became into an instance of the class simulation. 
 class simulation:
@@ -83,7 +75,7 @@ class simulation:
         self.total_rescued    = int(t_r)
     
     def __str__(self):
-        res = "Shooting: " + str(self.shooting) + "\n" + "Peacefuls: " + str(self.peacefuls) + "\n" + "Ticks: " + str(self.ticks) + "\n" + "App killed: " + str(self.app_killed) + "\n" + "Not App killed: " + str(self.not_app_killed) + "\n" + "Total killed: " + str(self.total_killed) + "\n" + "App rescued: " + str(self.app_rescued) + "\n" + "Not App rescued: " + str(self.not_app_rescued) + "\n" + "Total rescued: " + str(self.total_rescued) + "\n" + "App accident: " + str(self.app_accident) + "\n" + "Not App accident: " + str(self.not_app_accident) + "\n" + "Total accident: " + str(self.total_accident) + "\n" + "App secure room: " + str(self.app_room) + "\n" + "Not App secure room: " + str(self.not_app_room) + "\n" + "Total secure room: " + str(self.total_room) + "\n"
+        res = "Shooting: " + str(self.shooting) + " ,Peacefuls: " + str(self.peacefuls) + " ,Ticks: " + str(self.ticks) + " ,App killed: " + str(self.app_killed) + " ,Not App killed: " + str(self.not_app_killed) + " ,Total killed: " + str(self.total_killed) + " ,App rescued: " + str(self.app_rescued) + " ,Not App rescued: " + str(self.not_app_rescued) + " ,Total rescued: " + str(self.total_rescued) + " ,App accident: " + str(self.app_accident) + " ,Not App accident: " + str(self.not_app_accident) + " ,Total accident: " + str(self.total_accident) + " ,App secure room: " + str(self.app_room) + " ,Not App secure room: " + str(self.not_app_room) + " ,Total secure room: " + str(self.total_room)
         return res
     
     def count_not_app(self):
@@ -96,8 +88,8 @@ class simulation:
 # This function reads the files and populate de dictionaries
 def read_file(file):
     dic = {
-         file0 : (dic__mod_0__app_1, dic__mod_0__app_0)
-        ,file1 : (dic__mod_1__app_1, dic__mod_1__app_0)
+         file0 : (dic__mod_0__app_1__peacefuls, dic__mod_0__app_0__peacefuls)
+        ,file1 : (dic__mod_1__app_1__peacefuls, dic__mod_1__app_0__peacefuls)
         ,file2 : (dic__mod_1__app_1__attackers_speed, dic__mod_1__app_0__attackers_speed)
         ,file3 : (dic__mod_1__app_1__leaders, dic__mod_1__app_0__leaders)
         ,file4 : (dic__mod_0__app_1__rooms_1, dic__mod_0__app_0__rooms_1, dic__mod_0__app_1__rooms_0, dic__mod_0__app_0__rooms_0)
@@ -209,12 +201,41 @@ def list_by (dic, num_peac, result='rescued', targets = 'both', shoot=True, norm
                 normal = dic[k].peacefuls if normalized else 1
                 res.append(select(dic[k])[2] / normal )            
     return res
+    
+
+    
+#  Given a dictionary and a target result, this function plots a simple histogram
+#  results options: 'rescued', 'killed', 'room', 'accident'
+def histogram (dic=dic__mod_0__app_1__peacefuls, num_peac=0, shoot=True, result='rescued', with_app = 'both', normalized=False, save_file=None):
+    
+    main_title  = dic['name']
+    main_title += '\nPeacefuls: From 150 to 600' if num_peac == 0 else '\nPeacefuls: ' + str(num_peac)
+    main_title += ', Shooting' if shoot == True else ', Melee\n'
+    
+    h = list_by(dic, num_peac, result, with_app, shoot, normalized )
+    h.sort()
+    hmean = np.mean(h)
+    hstd = np.std(h) 
+    hstd = hstd if hstd > 0 else 0.6
+    pdf = stats.norm.pdf(h, hmean, hstd)
+    plt.suptitle(main_title, y = 1.05)
+    plt.title(str.upper(result) + ' -> Mean: ' + str( "{0:.3f}".format(hmean) ) + ', Std: ' + str( "{0:.3f}".format(hstd) ) )
+    plt.plot(h, pdf, '-o')
+    plt.hist(h, density=True)
+    
+    if save_file:
+        t=str(datetime.datetime.now())[:-7]
+        file_type = t + '.' + save_file
+        plt.savefig('../img/histogram_'+file_type , bbox_inches='tight', pad_inches=0.3)
+    plt.show()
+
+
+
 
     
 # Given a dictionary, this function plots the histograms for rescued, killed, secure-rooms and accident 
 def show_histograms (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False, save_file=None):
-    main_title = dic['name']
-    main_title += '\nApp: activated' if dic in dics_with_app else '\nApp: deactivated'
+    main_title  = dic['name']
     main_title += '\nPeacefuls: From 150 to 600' if num_peac == 0 else '\nPeacefuls: ' + str(num_peac)
     main_title += ', Shooting' if shoot == True else ', Melee'
     
@@ -256,10 +277,13 @@ def show_histograms (dic, num_peac=0, with_app = 'both', shoot=True, normalized=
     plt.show()
 
 
+
+
+
 # This function returns a plot where we are comparing the histograms of a given pair of dictionaries (dic1, dic2)
 def compare_histograms ( dic1, dic2, num_peac=350, with_app = 'both', shoot=True, normalized=False, save_file=None ):
-    
-    main_title = 'dic1: ' + dic1['name'] + ' (Blue)  <>  dic2: '+ dic2['name'] + '  (Red)\n'
+
+    main_title = 'dic1: ' + dic1['name'] + ' (Blue)  vs.  dic2: '+ dic2['name'] + '  (Red)\n'
     main_title += 'Peacefuls: From 150 to 600' if num_peac == 0 else 'Peacefuls: ' + str(num_peac)
     main_title += ', Shooting' if shoot == True else ', Melee'    
     
@@ -323,7 +347,10 @@ def compare_histograms ( dic1, dic2, num_peac=350, with_app = 'both', shoot=True
         file_type = t + '.' + save_file
         plt.savefig('../img/compare_histograms_'+file_type, bbox_inches='tight', pad_inches=0.3)   
     plt.show()  
-    
+
+
+
+
         
 # Given a dictionary and a target secuence, returns the secuences for killed, rescued, in secure room and accidents
 def secuences_by (dic, secuence = '', with_app = 'both', shoot=True, normalized=False):
@@ -365,8 +392,11 @@ def secuences_by (dic, secuence = '', with_app = 'both', shoot=True, normalized=
          
     xaxis = np.array(rang)    
     return [killed,rescued,accident,room, xaxis]
-    
 
+
+
+
+    
 
 # Given a dictionary and a target secuence, this function plots the secuences for killed,rescued,in secure rooms and accidents
 # save_file options: 'pdf' , 'png', None
@@ -380,8 +410,7 @@ def show_secuences(dic, secuence = '', with_app = 'both', shoot=True, normalized
         else:
             secuence = 'people'
             
-    main_title =  'App: activated' if dic in dics_with_app else 'App: deactivated'
-    main_title += ', Visibility and sound mod: 0 \n' if dic == dic__mod_0__app_1 or dic == dic__mod_0__app_0 else ', Visibility and sound mod: 1 \n' 
+    main_title =  dic['name']+'\n' 
     main_title += 'Peacefuls: From 150 to 600' if secuence == 'people' else 'Attacker speed: From 0.6 to 1.5' if secuence == 'attacker_speed' else 'Leaders percentage: from 0 to 1'
     main_title += ', Shooting' if shoot == True else ', Melee'
       
@@ -413,6 +442,8 @@ def show_secuences(dic, secuence = '', with_app = 'both', shoot=True, normalized
         plt.savefig('../img/show_secuences_'+file_type, bbox_inches='tight', pad_inches=0.3)   
     plt.show()
     
+    
+    
 
 # Given two dictionaries and a target secuence, This function plot the secuences comparation for killed, rescued,accidents and in secure rooms
 # Admited secuence values: 'people', 'attacker_speed', 'leaders_percentage' 
@@ -426,7 +457,6 @@ def compare_secuences ( dic1, dic2, secuence='', with_app = 'both', shoot=True, 
         else:
             secuence = 'people'
             
-    # main_title = 'Visibility and sound mod: 0 \n' if dic1 == dic__mod_0__app_1 else 'Visibility and sound mod: 1 \n' 
     main_title = 'Comparing: '+dic1['name']+' and '+dic2['name']+ '\n' 
     main_title += 'Shooting, ' if shoot == True else 'Melee, '
     main_title += 'Peacefuls: From 150 to 600' if secuence == 'people' else 'Peacefuls: 350\nAttacker speed: From 0.6 to 1.5' if secuence == 'attacker_speed' else 'Peacefuls: 350\nLeaders percentage: from 0 to 1'
@@ -467,32 +497,10 @@ def compare_secuences ( dic1, dic2, secuence='', with_app = 'both', shoot=True, 
         file_type = t + '.' + save_file
         plt.savefig('../img/compare_secuences_'+file_type , bbox_inches='tight', pad_inches=0.3)     
     plt.show()
-       
-    
-#  Given a dictionary and a target result, this function plots a simple histogram
-#  results options: 'rescued', 'killed', 'room', 'accident'
-def histogram (dic=dic__mod_0__app_1, num_peac=0, result='rescued', with_app = 'both', shoot=True, normalized=False, save_file=None):
-    main_title  = 'App: activated' if dic in dics_with_app else 'App: deactivated'
-    main_title += ', Visibility and sound mod: ' + '0 \n' if dic == dic__mod_0__app_1 or dic == dic__mod_0__app_1 else '1 \n' 
-    main_title += ', Peacefuls: From 150 to 600' if num_peac == 0 else ', Peacefuls: ' + str(num_peac)
-    main_title += ', Shooting' if shoot == True else ', Melee'
-    
-    h = list_by(dic, num_peac, result, with_app, shoot, normalized )
-    h.sort()
-    hmean = np.mean(h)
-    hstd = np.std(h) 
-    hstd = hstd if hstd > 0 else 0.6
-    pdf = stats.norm.pdf(h, hmean, hstd)
-    plt.suptitle(main_title, y = 1.03)
-    plt.title(result + ' - Mean: ' + str( "{0:.3f}".format(hmean) ) + ', Std: ' + str( "{0:.3f}".format(hstd) ) )
-    plt.plot(h, pdf, '-o')
-    plt.hist(h, density=True)
-        
-    if save_file:
-        t=str(datetime.datetime.now())[:-7]
-        file_type = t + '.' + save_file
-        plt.savefig('../img/histogram_'+file_type , bbox_inches='tight', pad_inches=0.3)
-    plt.show()
+
+
+
+
 
 read_file(file0)
 read_file(file1)
