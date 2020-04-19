@@ -206,13 +206,24 @@ def list_by (dic, num_peac, result='rescued', targets = 'both', shoot=True, norm
     
 #  Given a dictionary and a target result, this function plots a simple histogram
 #  results options: 'rescued', 'killed', 'room', 'accident'
-def histogram (dic=dic__mod_0__app_1__peacefuls, num_peac=0, shoot=True, result='rescued', with_app = 'both', normalized=False, save_file=None):
+def histogram (dic=dic__mod_0__app_1__peacefuls, num_peac=0, shoot=True, result='rescued', with_app = 'both', normalized=False, save_file=None, criteria=('',-1) ):
     
     main_title  = dic['name']
-    main_title += '\nPeacefuls: From 150 to 600' if num_peac == 0 else '\nPeacefuls: ' + str(num_peac)
-    main_title += ', Shooting' if shoot == True else ', Melee\n'
+    if 'peacefuls' in dic['name']:
+        main_title += '\nPeacefuls: From 150 to 600' if num_peac == 0 else '\nPeacefuls: ' + str(num_peac)
+        main_title += ', Atck-speed: 0.5, Leaders-percent: 0.2'
+    elif 'leaders' in dic['name']:
+        main_title += '\nPeacefuls: 350, Atck-speed: 0.5'
+        main_title += ', Leaders-percent: From 0 to 1' if criteria[1] == -1 else ', Leaders-percent: ' + str(criteria[1])
+    else:
+        main_title += '\nPeacefuls: 350, '
+        main_title += 'Atck-speed: From 0.6 to 1.5' if criteria[1] == -1 else 'Atck-speed: ' + str(criteria[1])
+        main_title += ', Leaders-percent: 0.2'
+        
+        
+    main_title += ', Shooting' if shoot == True else ', Melee\n\n'
     
-    h = list_by(dic, num_peac, result, with_app, shoot, normalized )
+    h = list_by(dic, num_peac, result, with_app, shoot, normalized, criteria )
     h.sort()
     hmean = np.mean(h)
     hstd = np.std(h) 
@@ -234,16 +245,26 @@ def histogram (dic=dic__mod_0__app_1__peacefuls, num_peac=0, shoot=True, result=
 
     
 # Given a dictionary, this function plots the histograms for rescued, killed, secure-rooms and accident 
-def show_histograms (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False, save_file=None):
+def show_histograms (dic, num_peac=0, with_app = 'both', shoot=True, normalized=False, save_file=None, criteria=('',-1)):
+    
     main_title  = dic['name']
-    main_title += '\nPeacefuls: From 150 to 600' if num_peac == 0 else '\nPeacefuls: ' + str(num_peac)
+    if 'peacefuls' in dic['name']:
+        main_title += '\nPeacefuls: From 150 to 600' if num_peac == 0 else '\nPeacefuls: ' + str(num_peac)
+        main_title += ', Atck-speed: 0.5, Leaders-percent: 0.2'
+    elif 'leaders' in dic['name']:
+        main_title += '\nPeacefuls: 350, Atck-speed: 0.5'
+        main_title += ', Leaders-percent: From 0 to 1' if criteria[1] == -1 else ', Leaders-percent: ' + str(criteria[1])
+    else:
+        main_title += '\nPeacefuls: 350, '
+        main_title += 'Atck-speed: From 0.6 to 1.5' if criteria[1] == -1 else 'Atck-speed: ' + str(criteria[1])
+        main_title += ', Leaders-percent: 0.2'
     main_title += ', Shooting' if shoot == True else ', Melee'
     
     titles = ['KILLED', 'RESCUED', 'ACCIDENT', 'SECURE ROOM']
-    h1 = (list_by(dic, num_peac, 'killed'  , with_app, shoot, normalized ))
-    h2 = (list_by(dic, num_peac, 'rescued' , with_app, shoot, normalized ))
-    h3 = (list_by(dic, num_peac, 'accident', with_app, shoot, normalized ))
-    h4 = (list_by(dic, num_peac, 'room'    , with_app, shoot, normalized ))
+    h1 = (list_by(dic, num_peac, 'killed'  , with_app, shoot, normalized, criteria ))
+    h2 = (list_by(dic, num_peac, 'rescued' , with_app, shoot, normalized, criteria ))
+    h3 = (list_by(dic, num_peac, 'accident', with_app, shoot, normalized, criteria ))
+    h4 = (list_by(dic, num_peac, 'room'    , with_app, shoot, normalized, criteria ))
     hi = [h1,h2,h3,h4]
     
     fig = plt.figure(figsize=(10,10))
@@ -281,21 +302,30 @@ def show_histograms (dic, num_peac=0, with_app = 'both', shoot=True, normalized=
 
 
 # This function returns a plot where we are comparing the histograms of a given pair of dictionaries (dic1, dic2)
-def compare_histograms ( dic1, dic2, num_peac=350, with_app = 'both', shoot=True, normalized=False, save_file=None ):
-
+def compare_histograms ( dic1, dic2, num_peac=350, with_app = 'both', shoot=True, normalized=False, save_file=None, criteria=('',-1) ):
+  
     main_title = 'dic1: ' + dic1['name'] + ' (Blue)  vs.  dic2: '+ dic2['name'] + '  (Red)\n'
-    main_title += 'Peacefuls: From 150 to 600' if num_peac == 0 else 'Peacefuls: ' + str(num_peac)
-    main_title += ', Shooting' if shoot == True else ', Melee'    
+    if 'peacefuls' in dic1['name']:
+        main_title += 'Peacefuls: From 150 to 600' if num_peac == 0 else 'Peacefuls: ' + str(num_peac)
+        main_title += ', Atck-speed: 0.5, Leaders-percent: 0.2'
+    elif 'leaders' in dic1['name']:
+        main_title += 'Peacefuls: 350, Atck-speed: 0.5'
+        main_title += ', Leaders-percent: From 0 to 1' if criteria[1] == -1 else ', Leaders-percent: ' + str(criteria[1])
+    else:
+        main_title += 'Peacefuls: 350, '
+        main_title += 'Atck-speed: From 0.6 to 1.5' if criteria[1] == -1 else 'Atck-speed: ' + str(criteria[1])
+        main_title += ', Leaders-percent: 0.2'
+    main_title += ', Shooting' if shoot == True else ', Melee\n'
     
-    h1  = (list_by(dic1, num_peac, 'killed'  , with_app, shoot, normalized ))
-    h2  = (list_by(dic1, num_peac, 'rescued' , with_app, shoot, normalized ))
-    h3  = (list_by(dic1, num_peac, 'accident', with_app, shoot, normalized ))
-    h4  = (list_by(dic1, num_peac, 'room'    , with_app, shoot, normalized ))
+    h1  = (list_by(dic1, num_peac, 'killed'  , with_app, shoot, normalized, criteria ))
+    h2  = (list_by(dic1, num_peac, 'rescued' , with_app, shoot, normalized, criteria ))
+    h3  = (list_by(dic1, num_peac, 'accident', with_app, shoot, normalized, criteria ))
+    h4  = (list_by(dic1, num_peac, 'room'    , with_app, shoot, normalized, criteria ))
     
-    h1n = (list_by(dic2, num_peac, 'killed'  , with_app, shoot, normalized ))
-    h2n = (list_by(dic2, num_peac, 'rescued' , with_app, shoot, normalized ))
-    h3n = (list_by(dic2, num_peac, 'accident', with_app, shoot, normalized ))
-    h4n = (list_by(dic2, num_peac, 'room'    , with_app, shoot, normalized ))
+    h1n = (list_by(dic2, num_peac, 'killed'  , with_app, shoot, normalized, criteria ))
+    h2n = (list_by(dic2, num_peac, 'rescued' , with_app, shoot, normalized, criteria))
+    h3n = (list_by(dic2, num_peac, 'accident', with_app, shoot, normalized, criteria ))
+    h4n = (list_by(dic2, num_peac, 'room'    , with_app, shoot, normalized, criteria ))
     
     titles = ['KILLED', 'RESCUED', 'ACCIDENT', 'SECURE ROOM']
     hi     = [h1, h2, h3, h4]
@@ -457,9 +487,9 @@ def compare_secuences ( dic1, dic2, secuence='', with_app = 'both', shoot=True, 
         else:
             secuence = 'people'
             
-    main_title = 'Comparing: '+dic1['name']+' and '+dic2['name']+ '\n' 
+    main_title = dic1['name']+' (Blue) vs. '+dic2['name']+ ' (Red)\n' 
     main_title += 'Shooting, ' if shoot == True else 'Melee, '
-    main_title += 'Peacefuls: From 150 to 600' if secuence == 'people' else 'Peacefuls: 350\nAttacker speed: From 0.6 to 1.5' if secuence == 'attacker_speed' else 'Peacefuls: 350\nLeaders percentage: from 0 to 1'
+    main_title += 'Peacefuls: From 150 to 600, Attacker speed: 0.5, Leaders percentage: 0.2' if secuence == 'people' else 'Peacefuls: 350, Attacker speed: From 0.6 to 1.5, Leaders percentage: 0.2' if secuence == 'attacker_speed' else 'Peacefuls: 350, Attacker speed: 0.5, Leaders percentage: from 0 to 1'
          
     fig = plt.figure(figsize=(10, 10))
     fig.suptitle(main_title)
@@ -510,7 +540,13 @@ read_file(file4)
 read_file(file5)
 
 
+# compare_histograms(dic__mod_0__app_1__rooms_0, dic__mod_0__app_0__rooms_0, save_file='pdf')
 
+# compare_histograms(dic__mod_0__app_1__rooms_1, dic__mod_0__app_0__rooms_1, save_file='pdf')
+
+# compare_histograms(dic__mod_1__app_1__rooms_0, dic__mod_1__app_0__rooms_0, save_file='pdf')
+# compare_histograms(dic__mod_1__app_1__rooms_1, dic__mod_1__app_0__rooms_1, save_file='pdf')
+compare_histograms(dic__mod_0__app_1__rooms_1, dic__mod_0__app_1__rooms_0, save_file='pdf')
 
 
 
