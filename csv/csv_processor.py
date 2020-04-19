@@ -311,6 +311,8 @@ def compare_histograms ( dic1, dic2, num_peac=350, with_app = 'both', shoot=True
     elif 'leaders' in dic1['name']:
         main_title += 'Peacefuls: 350, Atck-speed: 0.5'
         main_title += ', Leaders-percent: From 0 to 1' if criteria[1] == -1 else ', Leaders-percent: ' + str(criteria[1])
+    elif 'rooms' in dic1['name']:
+        main_title += 'Peacefuls: 350, Atck-speed: 0.8, Leaders-percent: 0.2'
     else:
         main_title += 'Peacefuls: 350, '
         main_title += 'Atck-speed: From 0.6 to 1.5' if criteria[1] == -1 else 'Atck-speed: ' + str(criteria[1])
